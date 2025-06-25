@@ -28,6 +28,8 @@ class CustomUser(AbstractUser):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+    
+    
 # --- TRAVEL ORDER ---
 
 class TravelOrder(models.Model):
@@ -37,12 +39,33 @@ class TravelOrder(models.Model):
         ('Rejected', 'Rejected'),
     ]
 
+    MODE_OF_FILING = [
+        ('IMMEDIATE','IMMEDIATE'),
+        ('NOT_IMMEDIATE','NOT_IMMEDIATE')
+    ]
+
+    FUND_CLUSTER = [
+        ('01_RF',')01_RF'),
+        ('07_TF','07_TF')
+    ]
+
     employees = models.ManyToManyField(CustomUser, related_name='travel_orders')
+    #new
+    mode_of_filing = models.CharField(max_length=20, choices=MODE_OF_FILING, blank=True)
+    evidence = models.ImageField(null=True, blank=True, upload_to='evidence/')
+    date_of_filing = models.DateField(auto_now_add=True)
+    
+    fund_cluster = models.CharField(max_length=10, choices=FUND_CLUSTER, blank=True)
+    number_of_employees = models.IntegerField(default=0)
+    
+    
+
+
 
     destination = models.CharField(max_length=255)
     purpose = models.TextField()
-    departure_date = models.DateField()
-    return_date = models.DateField()
+    date_travel_from = models.DateField()
+    date_travel_to = models.DateField()
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     approval_stage = models.IntegerField(default=0)
@@ -51,19 +74,14 @@ class TravelOrder(models.Model):
 
     rejection_comment = models.TextField(null=True, blank=True)
     rejected_at = models.DateTimeField(null=True, blank=True)
-    rejected_by = models.ForeignKey(
-        CustomUser,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name='rejected_orders'
-    )
+    rejected_by = models.ForeignKey(CustomUser,null=True, blank=True, on_delete=models.SET_NULL, related_name='rejected_orders')
     is_resubmitted = models.BooleanField(default=False)
 
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"TravelOrder to {self.destination} by {', '.join([e.full_name for e in self.employees.all()])}"
+    
 
 class Signature(models.Model):
     order = models.ForeignKey(TravelOrder, on_delete=models.CASCADE)
@@ -73,3 +91,4 @@ class Signature(models.Model):
 
     def __str__(self):
         return f"Signed by {self.signed_by.username} for order {self.order.id}"
+    

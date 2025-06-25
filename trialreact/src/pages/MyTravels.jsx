@@ -9,7 +9,7 @@ export default function MyTravels() {
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get('/travel-orders/');
+      const response = await axios.get('/my-travel-orders/');
       setOrders(response.data);
     } catch (error) {
       console.error('Error fetching travel orders:', error);
@@ -27,10 +27,23 @@ export default function MyTravels() {
   return (
     <Layout>
       <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-semibold text-gray-800">My Travels</h2>
-        </div>
+        <div className="border-b border-gray-200 mb-6">
+  <nav className="flex space-x-6 text-sm font-medium text-gray-500">
+    <button
+      className="pb-2 border-b-2 border-blue-600 text-blue-600"
+    >
+      My Travels
+    </button>
+    <button
+      onClick={() => navigate('/rejected')}
+      className="pb-2 border-b-2 border-transparent hover:text-blue-600 hover:border-blue-500"
+    >
+      Rejected Orders
+    </button>
+  </nav>
+</div>
 
+        
         <div className="overflow-x-auto bg-white shadow rounded-lg">
           <table className="min-w-full table-auto border-collapse">
             <thead className="bg-gray-100">
@@ -51,8 +64,8 @@ export default function MyTravels() {
                   <tr key={order.id} className="hover:bg-gray-100">
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.destination}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.purpose}</td>
-                    <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.departure_date}</td>
-                    <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.return_date}</td>
+                    <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.date_travel_from}</td>
+                    <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.date_travel_to}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">
                       <span
                         className={`px-2 py-1 rounded text-xs font-medium ${

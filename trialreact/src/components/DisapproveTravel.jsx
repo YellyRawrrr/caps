@@ -4,7 +4,7 @@ import axios from '../api/axios';
 
 export default function DisapproveTravel({ isOpen, onClose, fetchOrders, id }) {
   const [comment, setComment] = useState('');
-  const navigate = useNavigate(); // ✅ React Router navigation
+  const navigate = useNavigate();
 
   if (!isOpen) return null;
 
@@ -25,7 +25,7 @@ export default function DisapproveTravel({ isOpen, onClose, fetchOrders, id }) {
       onClose();
       if (fetchOrders) fetchOrders();
 
-      navigate('/approve'); // ✅ Navigate after rejection
+      navigate('/approve');
     } catch (err) {
       alert('Rejection failed.');
       console.error(err);
@@ -33,38 +33,45 @@ export default function DisapproveTravel({ isOpen, onClose, fetchOrders, id }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-xl relative">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+      <div className="bg-white w-[90%] sm:w-[80%] md:w-[60%] lg:w-[50%] p-6 space-y-6 relative border border-gray-200">
+
+        {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+          className="absolute top-2 right-3 text-gray-500 hover:text-gray-800 text-xl"
         >
           ✕
         </button>
 
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-2 border-gray-200">
-          Reject Travel Order #{id}
+        {/* Header */}
+        <h2 className="text-xl font-bold text-gray-800">
+          Reject Travel Order 
         </h2>
 
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-medium mb-2">
+        {/* Rejection Comment */}
+        <div className="space-y-2">
+          <label className="text-sm text-gray-700 font-medium">
             Rejection Comment:
           </label>
           <textarea
             rows="4"
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            className="w-full border border-gray-300 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Enter the reason for rejecting this travel order..."
           />
         </div>
 
-        <button
-          onClick={handleReject}
-          className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded"
-        >
-          Reject
-        </button>
+        {/* Action */}
+        <div className="flex justify-end pt-4 border-t border-gray-200">
+          <button
+            onClick={handleReject}
+            className="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2"
+          >
+            Reject
+          </button>
+        </div>
       </div>
     </div>
   );

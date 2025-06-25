@@ -11,7 +11,7 @@ export default function HeadApprovalPanel() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const res = await axios.get('travel-orders/');
+        const res = await axios.get('/my-pending-approvals/');
         setOrders(res.data);
       } catch (e) {
         console.error("Failed to fetch orders:", e);

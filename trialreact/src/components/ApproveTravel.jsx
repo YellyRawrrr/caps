@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function ApproveTravel({ isOpen, onClose, orderId, fetchOrders }) {
   const sigPadRef = useRef();
-  const navigate = useNavigate(); // ✅ React Router navigation
+  const navigate = useNavigate();
 
   if (!isOpen) return null;
 
@@ -27,7 +27,7 @@ export default function ApproveTravel({ isOpen, onClose, orderId, fetchOrders })
       onClose();
       if (fetchOrders) fetchOrders();
 
-      navigate('/approve'); // ✅ Navigate to approval list after success
+      navigate('/approve');
     } catch (err) {
       console.error(err);
       alert('Approval failed.');
@@ -35,39 +35,48 @@ export default function ApproveTravel({ isOpen, onClose, orderId, fetchOrders })
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-xl relative">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+      <div className="bg-white w-[90%] sm:w-[80%] md:w-[60%] lg:w-[50%] p-6 space-y-6 relative border border-gray-200">
+
+        {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+          className="absolute top-2 right-3 text-gray-500 hover:text-gray-800 text-xl"
         >
           ✕
         </button>
 
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-2 border-gray-200">
-          Approve Travel Order #{orderId}
+        {/* Header */}
+        <h2 className="text-xl font-bold text-gray-800">
+          Approve Travel Order 
         </h2>
 
-        <div>
-          <label className="block text-gray-700 text-sm font-medium mb-2">
+        {/* Signature Field */}
+        <div className="space-y-2">
+          <label className="text-gray-700 text-sm font-medium">
             Signature:
           </label>
-          <SignatureCanvas
-            ref={sigPadRef}
-            canvasProps={{
-              width: 400,
-              height: 150,
-              className: 'border border-gray-300 bg-gray-50 rounded'
-            }}
-          />
+          <div className="overflow-x-auto border border-gray-300 bg-gray-50">
+            <SignatureCanvas
+              ref={sigPadRef}
+              canvasProps={{
+                width: 500,
+                height: 150,
+                className: 'block'
+              }}
+            />
+          </div>
         </div>
 
-        <button
-          onClick={handleApprove}
-          className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded"
-        >
-          Approve
-        </button>
+        {/* Action Button */}
+        <div className="flex justify-end pt-4 border-t border-gray-200">
+          <button
+            onClick={handleApprove}
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2"
+          >
+            Approve
+          </button>
+        </div>
       </div>
     </div>
   );

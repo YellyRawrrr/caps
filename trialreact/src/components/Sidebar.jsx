@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaPlane, FaBus, FaDesktop, FaFileInvoiceDollar } from 'react-icons/fa';
+import { FaPlane, FaBus, FaDesktop, FaFileInvoiceDollar, FaCoins } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import TravelOrderForm from './TravelOrderForm';
 
@@ -63,16 +63,17 @@ const Sidebar = ({ fetchOrders }) => {
                   <span>My Travels</span>
                 </NavLink>
 
+                
                 <NavLink
-                  to="/rejected"
+                  to="/liquidation"
                   className={({ isActive }) =>
                     `flex items-center gap-4 px-3 py-2 rounded-lg transition ${
                       isActive ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-800 hover:text-blue-700'
                     }`
                   }
                 >
-                  <FaFileInvoiceDollar size={24} />
-                  <span>Rejected Orders</span>
+                  <FaCoins size={24} />
+                  <span>Liquidation</span>
                 </NavLink>
               </>
             )}

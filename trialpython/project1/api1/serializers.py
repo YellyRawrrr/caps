@@ -5,16 +5,15 @@ from django.contrib.auth.hashers import make_password
 
 class TravelOrderSerializer(serializers.ModelSerializer):
     # Accepts list of user IDs
-    employees = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=CustomUser.objects.all()
-    )
-
+    employees = serializers.PrimaryKeyRelatedField(many=True, queryset=CustomUser.objects.all())
+    
     # Optional: returns full names of employees (read-only)
     employee_names = serializers.SerializerMethodField()
 
     class Meta:
         model = TravelOrder
         fields = '__all__'
+        read_only_fields = ['number_of_employees']
 
     def get_employee_names(self, obj):
         return [f"{u.first_name} {u.last_name}" for u in obj.employees.all()]

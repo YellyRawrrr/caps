@@ -1,3 +1,4 @@
+import { Toaster } from 'react-hot-toast';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import MyTravels from './pages/MyTravels';
@@ -11,13 +12,15 @@ import ViewTravels from './pages/ViewTravels';
 import HeadApprovalDetails from './pages/HeadApprovalDetails';
 import ViewApproval from './components/ViewApproval';
 import Dashboard from './pages/Dashboard';
+import Liquidation from './pages/Liquidation';
 
 
 function App() {
   return (
     <AuthProvider>
-  
+   <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
       <Routes>
+        
         {/* Public routes */}
         <Route path="/" element={<Navigate to="/login" replace />} />
 
@@ -47,6 +50,13 @@ function App() {
             <RejectedOrders />
           </ProtectedRoute>
         } />
+
+        <Route path="/liquidation" element={
+          <ProtectedRoute allowedRoles={['employee', 'head']}>
+            <Liquidation />
+          </ProtectedRoute>
+        } />
+
 
         {/* Head */}
         <Route path="/approve" element={

@@ -89,20 +89,6 @@ def protected_view(request):
 class TravelOrderCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
-        user = request.user
-        if user.user_level == 'employee':
-            orders = TravelOrder.objects.filter(employees=user)
-        elif user.user_level in ['head', 'director']:
-            orders = TravelOrder.objects.filter(current_approver=user)
-        elif user.user_level == 'admin':
-            orders = TravelOrder.objects.all()
-        else:
-            return Response({"error": "Unauthorized to view travel orders."}, status=403)
-
-        serializer = TravelOrderSerializer(orders, many=True)
-        return Response(serializer.data)
-
     def post(self, request):
         user = request.user
 
@@ -110,7 +96,11 @@ class TravelOrderCreateView(APIView):
             return Response({"error": "Regional Director cannot file travel orders."}, status=400)
 
         approval_chain = get_approval_chain(user)
-        next_head = get_next_head(approval_chain, 0)
+        next_head = get_next_head(approval_chain, 0, current_user=user)
+
+
+        # ✅ Get employee list from FormData
+        employee_ids = request.data.getlist('employees')  # Safer with DRF parsers
 
         data = request.data.copy()
         data['current_approver'] = next_head.id if next_head else None
@@ -119,15 +109,45 @@ class TravelOrderCreateView(APIView):
         serializer = TravelOrderSerializer(data=data)
         if serializer.is_valid():
             travel_order = serializer.save()
-
-            employee_ids = data.get('employees', [])
-            if str(user.id) not in employee_ids:
-                employee_ids.append(str(user.id))
-
             travel_order.employees.set(employee_ids)
+
+            # 🔧 Add this line to update the count:
+            travel_order.number_of_employees = travel_order.employees.count()
+            travel_order.save()
             return Response(TravelOrderSerializer(travel_order).data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# View: MY FILED TRAVEL ORDERS
+class MyTravelOrdersView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if user.user_level == 'admin':
+            orders = TravelOrder.objects.all()
+        else:
+            orders = TravelOrder.objects.filter(employees=user)
+
+        serializer = TravelOrderSerializer(orders.distinct(), many=True)
+        return Response(serializer.data)
+
+
+# View: APPROVALS TO REVIEW (only where current_approver is the logged-in user)
+class TravelOrderApprovalsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # Only show if the current user is the current approver
+        orders = TravelOrder.objects.filter(current_approver=user, status='Pending')
+        serializer = TravelOrderSerializer(orders.distinct(), many=True)
+        return Response(serializer.data)
+
+
 
 
 class TravelOrderDetailView(APIView):

@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     TravelOrderCreateView, ApproveTravelOrderView, ResubmitTravelOrderView,
     CurrentUserView,TravelOrderUpdateView,TravelOrderDetailView,
-    EmployeeListView, login_view, logout_view,
+    EmployeeListView, MyTravelOrdersView, TravelOrderApprovalsView, login_view, logout_view,
     refresh_token_view, protected_view
 )
 
@@ -18,6 +18,9 @@ urlpatterns = [
 
     # Travel Order Routes
     path('travel-orders/', TravelOrderCreateView.as_view(), name='create-travel-order'),
+
+    path('my-travel-orders/', MyTravelOrdersView.as_view(), name='my-travel-orders'),
+    path('my-pending-approvals/', TravelOrderApprovalsView.as_view(), name='travel-order-approvals'),
     path('travel-orders/<int:pk>/', TravelOrderDetailView.as_view(), name='travel-order-detail'),
 
     path('update-travel-order/<int:pk>/', TravelOrderUpdateView.as_view(), name='update-travel-order'),
