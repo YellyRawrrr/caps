@@ -2,6 +2,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from django.core.validators import MinValueValidator
 from django.contrib.auth.models import AbstractUser
 
 # --- ACCOUNTS ---
@@ -29,7 +30,8 @@ class CustomUser(AbstractUser):
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
     
-    
+
+
 # --- TRAVEL ORDER ---
 
 class TravelOrder(models.Model):
@@ -58,10 +60,6 @@ class TravelOrder(models.Model):
     fund_cluster = models.CharField(max_length=10, choices=FUND_CLUSTER, blank=True)
     number_of_employees = models.IntegerField(default=0)
     
-    
-
-
-
     destination = models.CharField(max_length=255)
     purpose = models.TextField()
     date_travel_from = models.DateField()
@@ -81,6 +79,16 @@ class TravelOrder(models.Model):
 
     def __str__(self):
         return f"TravelOrder to {self.destination} by {', '.join([e.full_name for e in self.employees.all()])}"
+    
+class Itinerary(models.Model):
+    travel_order = models.ForeignKey(TravelOrder, related_name='itinerary', on_delete=models.CASCADE)
+    itinerary_date = models.DateField()
+    departure_time = models.TimeField()
+    arrival_time = models.TimeField()
+    transportation_allowance = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    per_diem = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    other_expense = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     
 
 class Signature(models.Model):

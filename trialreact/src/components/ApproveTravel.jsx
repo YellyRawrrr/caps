@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import axios from '../api/axios';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export default function ApproveTravel({ isOpen, onClose, orderId, fetchOrders }) {
   const sigPadRef = useRef();
@@ -23,14 +24,14 @@ export default function ApproveTravel({ isOpen, onClose, orderId, fetchOrders })
         signature
       });
 
-      alert('Approved successfully!');
+      toast.success('Approved successfully!');
       onClose();
       if (fetchOrders) fetchOrders();
 
       navigate('/approve');
     } catch (err) {
       console.error(err);
-      alert('Approval failed.');
+      toast.error('Approval failed!');
     }
   };
 

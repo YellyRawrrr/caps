@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Header from '../components/Header';
+import background from '../img/ncipbg.png';
 
 const LoginPage = () => {
   const { login } = useAuth();
@@ -16,11 +17,17 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Header />
-      <div className="flex justify-center items-center mt-10">
-        <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-md">
-          
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 
+          bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${background})` }}>
+
+      <div className="text-center mb-8">
+        <h1 className="text-white text-2xl font-bold uppercase tracking-wide">
+          Travel Order System (iPass)
+        </h1>
+      </div>
+
+      
+        <div className="bg-white shadow-md rounded-lg p-8 w-full max-w-md bg-opacity-90"> {/* Added bg-opacity-90 for slight transparency */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-gray-700 mb-1">Username</label>
@@ -51,7 +58,7 @@ const LoginPage = () => {
           </form>
         </div>
       </div>
-    </div>
+    
   );
 };
 

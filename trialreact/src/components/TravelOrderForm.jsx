@@ -10,7 +10,7 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
     identification: 'Identification',
     employee: 'Employee Details',
     itinerary: 'Itinerary',
-    validation: 'Validation'
+    validation: 'Validation',
   };
 
   const [activeTab, setActiveTab] = useState('identification');
@@ -21,8 +21,21 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
     date_travel_to: '',
     mode_of_filing: '',
     date_of_filing: new Date().toISOString().split('T')[0],
-    fund_cluster: ''
+    fund_cluster: '',
   });
+
+  const [itineraryList, setItineraryList] = useState([
+    {
+      itinerary_date: '',
+      departure_time: '',
+      arrival_time: '',
+      transportation_allowance: '',
+      per_diem: '',
+      other_expense: '',
+      total_amount: '',
+    },
+  ]);
+
   const [minDateFrom, setMinDateFrom] = useState('');
   const [minDateTo, setMinDateTo] = useState('');
   const [employeeList, setEmployeeList] = useState([]);
@@ -40,7 +53,7 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
       try {
         const [empRes, userRes] = await Promise.all([
           axios.get('employees/'),
-          axios.get('user-info/')
+          axios.get('user-info/'),
         ]);
         setEmployeeList(empRes.data);
         setCurrentUserId(userRes.data.id);
@@ -51,33 +64,28 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
     fetchInitialData();
   }, []);
 
-useEffect(() => {
-  const updatedMinDateFrom =
-    formData.mode_of_filing === 'IMMEDIATE'
-      ? getFutureDate(0)
-      : formData.mode_of_filing === 'NOT_IMMEDIATE'
-      ? getFutureDate(3)
-      : '';
-
-  setMinDateFrom(updatedMinDateFrom);
-
-  setFormData(prev => ({
-    ...prev,
-    date_travel_from:
-      prev.date_travel_from && prev.date_travel_from < updatedMinDateFrom
-        ? ''
-        : prev.date_travel_from,
-    date_travel_to: ''
-  }));
-
-  setMinDateTo('');
-}, [formData.mode_of_filing]);
-
+  useEffect(() => {
+    const updatedMinDateFrom =
+      formData.mode_of_filing === 'IMMEDIATE'
+        ? getFutureDate(0)
+        : formData.mode_of_filing === 'NOT_IMMEDIATE'
+        ? getFutureDate(3)
+        : '';
+    setMinDateFrom(updatedMinDateFrom);
+    setFormData((prev) => ({
+      ...prev,
+      date_travel_from:
+        prev.date_travel_from && prev.date_travel_from < updatedMinDateFrom
+          ? ''
+          : prev.date_travel_from,
+      date_travel_to: '',
+    }));
+    setMinDateTo('');
+  }, [formData.mode_of_filing]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (name === 'date_travel_from') {
       setMinDateTo(value);
     }
@@ -90,35 +98,82 @@ useEffect(() => {
   };
 
   const handleAddEmployee = () => {
-    setSelectedEmployees(prev => [...prev, null]);
+    setSelectedEmployees((prev) => [...prev, null]);
   };
 
   const handleRemoveEmployee = (index) => {
-    setSelectedEmployees(prev => prev.filter((_, i) => i !== index));
+    setSelectedEmployees((prev) => prev.filter((_, i) => i !== index));
   };
 
   const availableOptions = (index) => {
-    return employeeList.filter(emp =>
-      emp.id !== currentUserId &&
-      (!selectedEmployees.includes(emp.id?.toString()) || emp.id?.toString() === selectedEmployees[index])
+    return employeeList.filter(
+      (emp) =>
+        emp.id !== currentUserId &&
+        (!selectedEmployees.includes(emp.id?.toString()) ||
+          emp.id?.toString() === selectedEmployees[index])
     );
+  };
+
+  const handleItineraryChange = (index, e) => {
+    const { name, value } = e.target;
+    const updated = [...itineraryList];
+    updated[index][name] = value;
+
+    if (
+      ['transportation_allowance', 'per_diem', 'other_expense'].includes(name)
+    ) {
+      const { transportation_allowance, per_diem, other_expense } =
+        updated[index];
+      updated[index].total_amount =
+        parseFloat(transportation_allowance || 0) +
+        parseFloat(per_diem || 0) +
+        parseFloat(other_expense || 0);
+    }
+
+    setItineraryList(updated);
+  };
+
+  const addItinerary = () => {
+    setItineraryList((prev) => [
+      ...prev,
+      {
+        itinerary_date: '',
+        departure_time: '',
+        arrival_time: '',
+        transportation_allowance: '',
+        per_diem: '',
+        other_expense: '',
+        total_amount: '',
+      },
+    ]);
+  };
+
+  const removeItinerary = (index) => {
+    const updated = [...itineraryList];
+    updated.splice(index, 1);
+    setItineraryList(updated);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const data = new FormData();
-    Object.entries(formData).forEach(([key, value]) => data.append(key, value));
-    data.append('employees', currentUserId);
-
-    const additional = selectedEmployees.filter(id => id && id !== currentUserId?.toString());
-    additional.forEach(id => data.append('employees', id));
-    data.append('number_of_employees', 1 + additional.length);
+    const validEmployees = selectedEmployees.filter((id) => !!id);
+    const payload = {
+      ...formData,
+      employees: [currentUserId, ...validEmployees].map(Number),
+      number_of_employees: validEmployees.length + 1,
+      itinerary: itineraryList.map((item) => ({
+        ...item,
+        transportation_allowance:
+          parseFloat(item.transportation_allowance) || 0,
+        per_diem: parseFloat(item.per_diem) || 0,
+        other_expense: parseFloat(item.other_expense) || 0,
+        total_amount: parseFloat(item.total_amount) || 0,
+      })),
+    };
 
     try {
-      const response = await axios.post('travel-orders/', data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const response = await axios.post('travel-orders/', payload);
       if ([200, 201].includes(response.status)) {
         toast.success('Travel order submitted!');
         onClose();
@@ -127,8 +182,8 @@ useEffect(() => {
         toast.error('Submission failed. Please try again.');
       }
     } catch (err) {
-      console.error('Submission error:', err);
-      toast.error('Submission failed. Please try again.');
+      console.error('Submission error:', err.response?.data || err.message);
+      toast.error('Submission failed. Please check your form.');
     }
   };
 
@@ -152,13 +207,15 @@ useEffect(() => {
     }
 
     if (activeTab === 'employee') {
-      const hasEmployees = selectedEmployees.length > 0 && selectedEmployees.every(emp => !!emp);
+      const hasEmployees =
+        selectedEmployees.length > 0 &&
+        selectedEmployees.every((emp) => !!emp);
       const hasRequiredFields = [
         formData.destination,
         formData.purpose,
         formData.date_travel_from,
         formData.date_travel_to,
-        formData.fund_cluster
+        formData.fund_cluster,
       ].every(Boolean);
 
       return hasEmployees && hasRequiredFields;
@@ -170,15 +227,26 @@ useEffect(() => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-xl relative overflow-y-auto max-h-[90vh]">
-        <button onClick={onClose} className="absolute top-3 right-3 text-gray-500 hover:text-gray-700">✕</button>
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-2 border-gray-200">Travel Request Form</h2>
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+        >
+          ✕
+        </button>
+        <h2 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-2 border-gray-200">
+          Travel Request Form
+        </h2>
 
         <nav className="flex border-b mb-4">
-          {tabs.map(tab => (
+          {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium capitalize ${activeTab === tab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-blue-600 hover:border-blue-300'}`}
+              className={`px-4 py-2 text-sm font-medium capitalize ${
+                activeTab === tab
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-500 hover:text-blue-600 hover:border-blue-300'
+              }`}
             >
               {tabLabels[tab]}
             </button>
@@ -186,12 +254,18 @@ useEffect(() => {
         </nav>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Identification Tab */}
           {activeTab === 'identification' && (
             <div className="mb-4">
-              <label className="block mb-1 text-sm font-medium text-gray-700">Mode of Filing</label>
+              <label className="block mb-1 text-sm font-medium text-gray-700">
+                Mode of Filing
+              </label>
               <div className="flex gap-4">
-                {['IMMEDIATE', 'NOT_IMMEDIATE'].map(mode => (
-                  <label key={mode} className="flex items-center text-sm text-gray-700">
+                {['IMMEDIATE', 'NOT_IMMEDIATE'].map((mode) => (
+                  <label
+                    key={mode}
+                    className="flex items-center text-sm text-gray-700"
+                  >
                     <input
                       type="radio"
                       name="mode_of_filing"
@@ -207,10 +281,13 @@ useEffect(() => {
             </div>
           )}
 
+          {/* Employee Tab */}
           {activeTab === 'employee' && (
             <>
               <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">Date of Filing</label>
+                <label className="block mb-1 text-sm font-medium text-gray-700">
+                  Date of Filing
+                </label>
                 <input
                   type="date"
                   name="date_of_filing"
@@ -221,10 +298,15 @@ useEffect(() => {
               </div>
 
               <div className="mb-4">
-                <label className="block mb-1 text-sm font-medium text-gray-700">Fund Cluster</label>
+                <label className="block mb-1 text-sm font-medium text-gray-700">
+                  Fund Cluster
+                </label>
                 <div className="flex gap-4">
-                  {['01_RF', '07_TF'].map(cluster => (
-                    <label key={cluster} className="flex items-center text-sm text-gray-700">
+                  {['01_RF', '07_TF'].map((cluster) => (
+                    <label
+                      key={cluster}
+                      className="flex items-center text-sm text-gray-700"
+                    >
                       <input
                         type="radio"
                         name="fund_cluster"
@@ -239,45 +321,75 @@ useEffect(() => {
                 </div>
               </div>
 
-              <label className="block mb-1 text-sm font-medium text-gray-700">Employee(s)</label>
+              <label className="block mb-1 text-sm font-medium text-gray-700">
+                Employee(s)
+              </label>
               {selectedEmployees.map((emp, index) => (
                 <div key={index} className="flex gap-2 mb-2">
                   <select
                     value={emp || ''}
-                    onChange={e => handleEmployeeChange(index, e.target.value)}
+                    onChange={(e) =>
+                      handleEmployeeChange(index, e.target.value)
+                    }
                     className="flex-1 px-3 py-2 border border-gray-300 rounded"
                   >
                     <option value="">-- Select Employee --</option>
-                    {availableOptions(index).map(opt => (
+                    {availableOptions(index).map((opt) => (
                       <option key={opt.id} value={opt.id}>
                         {opt.first_name} {opt.last_name}
                       </option>
                     ))}
                   </select>
                   {selectedEmployees.length > 1 && (
-                    <button type="button" onClick={() => handleRemoveEmployee(index)} className="text-red-500 text-sm">❌</button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveEmployee(index)}
+                      className="text-red-500 text-sm"
+                    >
+                      ❌
+                    </button>
                   )}
                 </div>
               ))}
-              <button type="button" onClick={handleAddEmployee} className="text-blue-600 hover:underline text-sm mt-1">
+              <button
+                type="button"
+                onClick={handleAddEmployee}
+                className="text-blue-600 hover:underline text-sm mt-1"
+              >
                 + Add another employee
               </button>
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">Number of employee(s)</label>
+                <label className="block mb-1 text-sm font-medium text-gray-700">
+                  Number of employee(s)
+                </label>
                 <input
                   type="number"
                   readOnly
-                  value={selectedEmployees.filter(emp => emp && emp !== currentUserId?.toString()).length}
+                  value={selectedEmployees.filter((emp) => !!emp).length}
                   className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-600"
                 />
               </div>
 
-              {[{ label: 'Date of Official Travel(From)', name: 'date_travel_from', type: 'date', min: minDateFrom },
-                { label: 'Date of Official Travel(To)', name: 'date_travel_to', type: 'date', min: minDateTo },
-                { label: 'Destination', name: 'destination', type: 'text' }].map(({ label, name, type, min }) => (
+              {[
+                {
+                  label: 'Date of Official Travel(From)',
+                  name: 'date_travel_from',
+                  type: 'date',
+                  min: minDateFrom,
+                },
+                {
+                  label: 'Date of Official Travel(To)',
+                  name: 'date_travel_to',
+                  type: 'date',
+                  min: minDateTo,
+                },
+                { label: 'Destination', name: 'destination', type: 'text' },
+              ].map(({ label, name, type, min }) => (
                 <div key={name}>
-                  <label className="block mb-1 text-sm font-medium text-gray-700">{label}</label>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                    {label}
+                  </label>
                   <input
                     type={type}
                     name={name}
@@ -291,7 +403,9 @@ useEffect(() => {
               ))}
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">Purpose</label>
+                <label className="block mb-1 text-sm font-medium text-gray-700">
+                  Purpose
+                </label>
                 <textarea
                   name="purpose"
                   value={formData.purpose}
@@ -304,20 +418,119 @@ useEffect(() => {
             </>
           )}
 
-          {activeTab === 'itinerary' && <div className="text-sm text-gray-500 italic text-center">Itinerary details coming soon.</div>}
+          {/* Itinerary Tab */}
+          {activeTab === 'itinerary' && (
+            <div>
+              {itineraryList.map((entry, index) => (
+                <div key={index} className="mb-4 border p-4 rounded">
+                  <h4 className="font-medium text-sm mb-2">
+                    Itinerary #{index + 1}
+                  </h4>
+                  {[
+                    { name: 'itinerary_date', type: 'date', label: 'Date' },
+                    {
+                      name: 'departure_time',
+                      type: 'time',
+                      label: 'Departure Time',
+                    },
+                    {
+                      name: 'arrival_time',
+                      type: 'time',
+                      label: 'Arrival Time',
+                    },
+                    {
+                      name: 'transportation_allowance',
+                      type: 'number',
+                      label: 'Transportation Allowance',
+                    },
+                    { name: 'per_diem', type: 'number', label: 'Per Diem' },
+                    {
+                      name: 'other_expense',
+                      type: 'number',
+                      label: 'Other Expense',
+                    },
+                    {
+                      name: 'total_amount',
+                      type: 'number',
+                      label: 'Total Amount',
+                      readOnly: true,
+                    },
+                  ].map(({ name, type, label, readOnly }) => (
+                    <div key={name} className="mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        {label}
+                      </label>
+                      <input
+                        type={type}
+                        name={name}
+                        value={entry[name]}
+                        onChange={(e) => handleItineraryChange(index, e)}
+                        readOnly={readOnly}
+                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                      />
+                    </div>
+                  ))}
+                  {itineraryList.length > 1 && (
+                    <button
+                      onClick={() => removeItinerary(index)}
+                      type="button"
+                      className="text-red-500 text-sm mt-1"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={addItinerary}
+                type="button"
+                className="text-blue-600 text-sm mt-2"
+              >
+                + Add Itinerary
+              </button>
+            </div>
+          )}
 
-          {activeTab === 'validation' && <div className="text-sm text-gray-600 italic">Please review all details before submission.</div>}
+          {/* Validation Tab */}
+          {activeTab === 'validation' && (
+            <div className="text-sm text-gray-600 italic">
+              Please review all details before submission.
+            </div>
+          )}
 
           <div className="flex justify-between items-center pt-4 border-t">
-            <button type="button" onClick={onClose} className="text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
             <div className="flex space-x-2">
               {activeTab !== 'identification' && (
-                <button type="button" onClick={goToPreviousTab} className="bg-gray-200 hover:bg-gray-300 text-sm px-4 py-1 rounded">Back</button>
+                <button
+                  type="button"
+                  onClick={goToPreviousTab}
+                  className="bg-gray-200 hover:bg-gray-300 text-sm px-4 py-1 rounded"
+                >
+                  Back
+                </button>
               )}
               {activeTab !== 'validation' ? (
-                <button type="button" onClick={goToNextTab} className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1 rounded">Next</button>
+                <button
+                  type="button"
+                  onClick={goToNextTab}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1 rounded"
+                >
+                  Next
+                </button>
               ) : (
-                <button type="submit" className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-1 rounded">Submit Travel Order</button>
+                <button
+                  type="submit"
+                  className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-1 rounded"
+                >
+                  Submit Travel Order
+                </button>
               )}
             </div>
           </div>

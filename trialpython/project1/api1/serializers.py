@@ -1,22 +1,43 @@
 from rest_framework import serializers
-from .models import TravelOrder, Signature, CustomUser
+from .models import TravelOrder, Signature, CustomUser, Itinerary
 from django.contrib.auth.hashers import make_password
+
+class ItinerarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Itinerary
+        fields = '__all__'
+        extra_kwargs = {
+            'travel_order': {'required': False}
+        }
+
 
 
 class TravelOrderSerializer(serializers.ModelSerializer):
-    # Accepts list of user IDs
     employees = serializers.PrimaryKeyRelatedField(many=True, queryset=CustomUser.objects.all())
-    
-    # Optional: returns full names of employees (read-only)
     employee_names = serializers.SerializerMethodField()
+    itinerary = ItinerarySerializer(many=True)
 
     class Meta:
         model = TravelOrder
         fields = '__all__'
-        read_only_fields = ['number_of_employees']
 
     def get_employee_names(self, obj):
         return [f"{u.first_name} {u.last_name}" for u in obj.employees.all()]
+
+    def create(self, validated_data):
+        itinerary_data = validated_data.pop('itinerary')
+        employees_data = validated_data.pop('employees')
+
+        travel_order = TravelOrder.objects.create(**validated_data)
+        travel_order.employees.set(employees_data)
+
+        for item in itinerary_data:
+            Itinerary.objects.create(travel_order=travel_order, **item)
+
+        return travel_order
+
+
+
 
 
 

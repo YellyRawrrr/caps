@@ -50,13 +50,13 @@ export default function HeadApprovalDetails() {
               <tr key={order.id} className="hover:bg-gray-100">
                 <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.destination}</td>
                 <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.purpose}</td>
-                <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.departure_date}</td>
-                <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.return_date}</td>
+                <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.date_travel_from}</td>
+                <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.date_travel_to}</td>
                 <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.status}</td>
                 <td className="px-6 py-3 text-sm text-gray-800 border-b text-right">
                   <button
                     onClick={() => handleView(order)}
-                    className="bg-white text-amber-500 border border-amber-500 px-4 py-2 rounded-md mr-2 hover:bg-amber-500 hover:text-white transition duration-200"
+                    className="bg-white text-blue-900 border border-blue-900 px-4 py-2 rounded-md mr-2 hover:bg-blue-700 hover:text-white transition duration-200"
                   >
                     View
                   </button>

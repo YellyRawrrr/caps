@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from django.shortcuts import get_object_or_404
+import json
 from django.utils import timezone
 from .models import TravelOrder, Signature, CustomUser
 from .serializers import TravelOrderSerializer, UserSerializer
@@ -98,26 +99,34 @@ class TravelOrderCreateView(APIView):
         approval_chain = get_approval_chain(user)
         next_head = get_next_head(approval_chain, 0, current_user=user)
 
-
-        # ✅ Get employee list from FormData
-        employee_ids = request.data.getlist('employees')  # Safer with DRF parsers
-
+        # Clone the request data
         data = request.data.copy()
         data['current_approver'] = next_head.id if next_head else None
         data['approval_stage'] = 0
 
+        # If itinerary or employees came as JSON strings, parse them
+        if isinstance(data.get('itinerary'), str):
+            try:
+                data['itinerary'] = json.loads(data['itinerary'])
+            except json.JSONDecodeError:
+                return Response({'itinerary': ['Invalid itinerary format.']}, status=400)
+
+        if isinstance(data.get('employees'), str):
+            try:
+                data['employees'] = json.loads(data['employees'])
+            except json.JSONDecodeError:
+                return Response({'employees': ['Invalid employees format.']}, status=400)
+
+        # Validate and save
         serializer = TravelOrderSerializer(data=data)
         if serializer.is_valid():
             travel_order = serializer.save()
-            travel_order.employees.set(employee_ids)
-
-            # 🔧 Add this line to update the count:
             travel_order.number_of_employees = travel_order.employees.count()
             travel_order.save()
             return Response(TravelOrderSerializer(travel_order).data, status=status.HTTP_201_CREATED)
 
+        print("Validation errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 # View: MY FILED TRAVEL ORDERS
 class MyTravelOrdersView(APIView):

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
+import toast from 'react-hot-toast';
 
 export default function DisapproveTravel({ isOpen, onClose, fetchOrders, id }) {
   const [comment, setComment] = useState('');
@@ -20,14 +21,14 @@ export default function DisapproveTravel({ isOpen, onClose, fetchOrders, id }) {
         comment,
       });
 
-      alert('Travel order rejected.');
+      toast.success('Travel order rejected.');
       setComment('');
       onClose();
       if (fetchOrders) fetchOrders();
 
       navigate('/approve');
     } catch (err) {
-      alert('Rejection failed.');
+      toast.error('Rejection failed.');
       console.error(err);
     }
   };
