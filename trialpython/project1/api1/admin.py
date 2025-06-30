@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.html import mark_safe
-from .models import CustomUser, TravelOrder, Signature
+from .models import CustomUser, TravelOrder, Signature, Fund, Transportation
 
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
@@ -20,5 +20,7 @@ class TravelOrderAdmin(admin.ModelAdmin):
         return "No evidence uploaded"
 
 admin.site.register(CustomUser, CustomUserAdmin)
+admin.site.register(Fund)
+admin.site.register(Transportation)
 admin.site.register(TravelOrder, TravelOrderAdmin)
 admin.site.register(Signature)

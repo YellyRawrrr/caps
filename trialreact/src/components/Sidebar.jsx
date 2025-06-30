@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaPlane, FaBus, FaDesktop, FaFileInvoiceDollar, FaCoins } from 'react-icons/fa';
+import { FaPlane, FaBus, FaDesktop, FaCog, FaCoins, FaUser } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import TravelOrderForm from './TravelOrderForm';
 
@@ -93,17 +93,43 @@ const Sidebar = ({ fetchOrders }) => {
             )}
 
             {user?.user_level === 'admin' && (
+              <>
               <NavLink
-                to="/admin-dashboard"
+                to="/admin/employee-travel"
                 className={({ isActive }) =>
                   `flex items-center gap-4 px-3 py-2 rounded-lg transition ${
                     isActive ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-800 hover:text-blue-700'
                   }`
                 }
               >
-                <FaDesktop size={24} />
-                <span>Admin Panel</span>
+                <FaBus size={24} />
+                <span>Employee Travels</span>
               </NavLink>
+              
+              <NavLink
+                to="/admin/user-management"
+                className={({ isActive }) =>
+                  `flex items-center gap-4 px-3 py-2 rounded-lg transition ${
+                    isActive ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-800 hover:text-blue-700'
+                  }`
+                }
+              >
+                <FaUser size={24} />
+                <span>User Management</span>
+              </NavLink>
+
+              <NavLink
+                to="/admin/settings"
+                className={({ isActive }) =>
+                  `flex items-center gap-4 px-3 py-2 rounded-lg transition ${
+                    isActive ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-800 hover:text-blue-700'
+                  }`
+                }
+              >
+                <FaCog size={24} />
+                <span>Settings</span>
+              </NavLink>
+              </>
             )}
           </nav>
         </div>

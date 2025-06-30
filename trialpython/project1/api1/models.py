@@ -6,7 +6,6 @@ from django.core.validators import MinValueValidator
 from django.contrib.auth.models import AbstractUser
 
 # --- ACCOUNTS ---
-
 USER_LEVEL_CHOICES = [
     ('employee', 'Employee'),
     ('head', 'Head'),
@@ -30,7 +29,12 @@ class CustomUser(AbstractUser):
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
     
-
+# --- FUND ---
+class Fund(models.Model):
+    source_of_fund = models.CharField(max_length=50)
+    
+    def __str__(self):
+        return self.source_of_fund
 
 # --- TRAVEL ORDER ---
 
@@ -62,8 +66,12 @@ class TravelOrder(models.Model):
     
     destination = models.CharField(max_length=255)
     purpose = models.TextField()
+    fund = models.ForeignKey(Fund, on_delete=models.SET_NULL, null=True, blank=True)
     date_travel_from = models.DateField()
     date_travel_to = models.DateField()
+
+    #validation
+    prepared_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='prepared_travel_order')
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     approval_stage = models.IntegerField(default=0)
@@ -80,8 +88,15 @@ class TravelOrder(models.Model):
     def __str__(self):
         return f"TravelOrder to {self.destination} by {', '.join([e.full_name for e in self.employees.all()])}"
     
+class Transportation(models.Model):
+    means_of_transportation = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.means_of_transportation
+
 class Itinerary(models.Model):
     travel_order = models.ForeignKey(TravelOrder, related_name='itinerary', on_delete=models.CASCADE)
+    transportation = models.ForeignKey(Transportation, on_delete=models.SET_NULL, null=True, blank=True)
     itinerary_date = models.DateField()
     departure_time = models.TimeField()
     arrival_time = models.TimeField()
@@ -89,6 +104,8 @@ class Itinerary(models.Model):
     per_diem = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     other_expense = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
+
+
     
 
 class Signature(models.Model):

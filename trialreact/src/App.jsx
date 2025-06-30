@@ -13,6 +13,9 @@ import HeadApprovalDetails from './pages/HeadApprovalDetails';
 import ViewApproval from './components/ViewApproval';
 import Dashboard from './pages/Dashboard';
 import Liquidation from './pages/Liquidation';
+import UserManagement from './pages/AdminPage/UserManagement';
+import EmployeeTravel from './pages/AdminPage/EmployeeTravel';
+import AdminSettings from './pages/AdminPage/AdminSettings';
 
 
 function App() {
@@ -85,9 +88,23 @@ function App() {
         } />
 
         {/* Admin */}
-        <Route path="/admin-dashboard" element={
+        <Route path="/admin/employee-travel" element={
           <ProtectedRoute allowedRoles={['admin']}>
-            <div>Admin Dashboard</div>
+            <EmployeeTravel/>
+          </ProtectedRoute>
+
+        } />
+
+        <Route path="/admin/user-management" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <UserManagement/>
+          </ProtectedRoute>
+
+        } />
+        
+        <Route path="/admin/settings" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminSettings/>
           </ProtectedRoute>
         } />
       </Routes>

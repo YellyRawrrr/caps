@@ -22,6 +22,7 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
     mode_of_filing: '',
     date_of_filing: new Date().toISOString().split('T')[0],
     fund_cluster: '',
+    prepared_by: '',
   });
 
   const [itineraryList, setItineraryList] = useState([
@@ -29,6 +30,7 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
       itinerary_date: '',
       departure_time: '',
       arrival_time: '',
+      transportation:'',
       transportation_allowance: '',
       per_diem: '',
       other_expense: '',
@@ -36,6 +38,8 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
     },
   ]);
 
+  const [fundList, setFundList] = useState([]);
+  const [transportationList, setTransportationList] = useState([]); // ← ADD THIS
   const [minDateFrom, setMinDateFrom] = useState('');
   const [minDateTo, setMinDateTo] = useState('');
   const [employeeList, setEmployeeList] = useState([]);
@@ -50,17 +54,26 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      try {
-        const [empRes, userRes] = await Promise.all([
-          axios.get('employees/'),
-          axios.get('user-info/'),
-        ]);
-        setEmployeeList(empRes.data);
-        setCurrentUserId(userRes.data.id);
-      } catch (err) {
-        console.error('Failed to fetch data:', err);
-      }
-    };
+  try {
+    const [empRes, userRes, fundRes, transRes] = await Promise.all([
+      axios.get('employees/'),
+      axios.get('user-info/'),
+      axios.get('funds/'),
+      axios.get('transportation/'),
+    ]);
+    setEmployeeList(empRes.data);
+    setCurrentUserId(userRes.data.id);
+    setFundList(fundRes.data);
+    setTransportationList(transRes.data); 
+
+    setFormData((prev) => ({
+      ...prev,
+      prepared_by: userRes.data.id.toString(),
+    }));
+  } catch (err) {
+    console.error('Failed to fetch data:', err);
+  }
+};
     fetchInitialData();
   }, []);
 
@@ -160,6 +173,8 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
     const validEmployees = selectedEmployees.filter((id) => !!id);
     const payload = {
       ...formData,
+      fund: formData.fund ? Number(formData.fund) : null,
+      prepared_by: formData.prepared_by ? Number(formData.prepared_by) : null,
       employees: [currentUserId, ...validEmployees].map(Number),
       number_of_employees: validEmployees.length + 1,
       itinerary: itineraryList.map((item) => ({
@@ -201,28 +216,37 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
     if (index > 0) setActiveTab(tabs[index - 1]);
   };
 
-  const isCurrentTabValid = () => {
-    if (activeTab === 'identification') {
-      return !!formData.mode_of_filing;
-    }
+const isCurrentTabValid = () => {
+  if (activeTab === 'identification') {
+    return !!formData.mode_of_filing;
+  }
 
-    if (activeTab === 'employee') {
-      const hasEmployees =
-        selectedEmployees.length > 0 &&
-        selectedEmployees.every((emp) => !!emp);
-      const hasRequiredFields = [
-        formData.destination,
-        formData.purpose,
-        formData.date_travel_from,
-        formData.date_travel_to,
-        formData.fund_cluster,
-      ].every(Boolean);
+  if (activeTab === 'employee') {
+    const hasEmployees =
+      selectedEmployees.length > 0 &&
+      selectedEmployees.every((emp) => !!emp);
+    const hasRequiredFields = [
+      formData.destination,
+      formData.purpose,
+      formData.date_travel_from,
+      formData.date_travel_to,
+      formData.fund_cluster,
+    ].every(Boolean);
 
-      return hasEmployees && hasRequiredFields;
-    }
+    return hasEmployees && hasRequiredFields;
+  }
 
-    return true;
-  };
+  if (activeTab === 'itinerary') {
+    return itineraryList.every((entry) =>
+      ['itinerary_date', 'departure_time', 'arrival_time'].every(
+        (field) => !!entry[field]
+      )
+    );
+  }
+
+  return true;
+};
+
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
@@ -253,7 +277,14 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
           ))}
         </nav>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && activeTab !== 'validation') {
+                  e.preventDefault();
+                }
+              }}
+              className="space-y-4"
+            >
           {/* Identification Tab */}
           {activeTab === 'identification' && (
             <div className="mb-4">
@@ -415,104 +446,186 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
                   className="w-full px-3 py-2 border border-gray-300 rounded"
                 />
               </div>
+              <div className="mb-4">
+                <label className="block mb-1 text-sm font-medium text-gray-700">Fund Source</label>
+                <select
+                  name="fund"
+                  value={formData.fund}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                  required
+                >
+                  <option value="">-- Select Fund --</option>
+                  {fundList.map((fund) => (
+                    <option key={fund.id} value={fund.id}>
+                      {fund.source_of_fund}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </>
           )}
 
           {/* Itinerary Tab */}
-          {activeTab === 'itinerary' && (
-            <div>
-              {itineraryList.map((entry, index) => (
-                <div key={index} className="mb-4 border p-4 rounded">
-                  <h4 className="font-medium text-sm mb-2">
-                    Itinerary #{index + 1}
-                  </h4>
-                  {[
-                    { name: 'itinerary_date', type: 'date', label: 'Date' },
-                    {
-                      name: 'departure_time',
-                      type: 'time',
-                      label: 'Departure Time',
-                    },
-                    {
-                      name: 'arrival_time',
-                      type: 'time',
-                      label: 'Arrival Time',
-                    },
-                    {
-                      name: 'transportation_allowance',
-                      type: 'number',
-                      label: 'Transportation Allowance',
-                    },
-                    { name: 'per_diem', type: 'number', label: 'Per Diem' },
-                    {
-                      name: 'other_expense',
-                      type: 'number',
-                      label: 'Other Expense',
-                    },
-                    {
-                      name: 'total_amount',
-                      type: 'number',
-                      label: 'Total Amount',
-                      readOnly: true,
-                    },
-                  ].map(({ name, type, label, readOnly }) => (
-                    <div key={name} className="mb-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        {label}
-                      </label>
+            {activeTab === 'itinerary' && (
+              <div>
+                {itineraryList.map((entry, index) => (
+                  <div key={index} className="mb-4 border p-4 rounded">
+                    <h4 className="font-medium text-sm mb-2">Itinerary #{index + 1}</h4>
+
+                    {/* Date */}
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Date</label>
                       <input
-                        type={type}
-                        name={name}
-                        value={entry[name]}
+                        type="date"
+                        name="itinerary_date"
+                        value={entry.itinerary_date}
                         onChange={(e) => handleItineraryChange(index, e)}
-                        readOnly={readOnly}
                         className="w-full px-2 py-1 border border-gray-300 rounded"
                       />
                     </div>
-                  ))}
-                  {itineraryList.length > 1 && (
-                    <button
-                      onClick={() => removeItinerary(index)}
-                      type="button"
-                      className="text-red-500 text-sm mt-1"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                onClick={addItinerary}
-                type="button"
-                className="text-blue-600 text-sm mt-2"
-              >
-                + Add Itinerary
-              </button>
-            </div>
-          )}
+
+                    {/* Departure Time */}
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Departure Time</label>
+                      <input
+                        type="time"
+                        name="departure_time"
+                        value={entry.departure_time}
+                        onChange={(e) => handleItineraryChange(index, e)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                      />
+                    </div>
+
+                    {/* Arrival Time */}
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Arrival Time</label>
+                      <input
+                        type="time"
+                        name="arrival_time"
+                        value={entry.arrival_time}
+                        onChange={(e) => handleItineraryChange(index, e)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                      />
+                    </div>
+
+                    {/* 🚗 Means of Transportation */}
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Means of Transportation</label>
+                      <select
+                        name="transportation"
+                        value={entry.transportation || ''}
+                        onChange={(e) => handleItineraryChange(index, e)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                        required
+                      >
+                        <option value="">-- Select Transportation --</option>
+                        {transportationList.map((transportation) => (
+                          <option key={transportation.id} value={transportation.id}>
+                            {transportation.means_of_transportation}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Transportation Allowance */}
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Transportation Allowance</label>
+                      <input
+                        type="number"
+                        name="transportation_allowance"
+                        value={entry.transportation_allowance}
+                        onChange={(e) => handleItineraryChange(index, e)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                      />
+                    </div>
+
+                    {/* Per Diem */}
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Per Diem</label>
+                      <input
+                        type="number"
+                        name="per_diem"
+                        value={entry.per_diem}
+                        onChange={(e) => handleItineraryChange(index, e)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                      />
+                    </div>
+
+                    {/* Other Expense */}
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Other Expense</label>
+                      <input
+                        type="number"
+                        name="other_expense"
+                        value={entry.other_expense}
+                        onChange={(e) => handleItineraryChange(index, e)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded"
+                      />
+                    </div>
+
+                    {/* Total Amount */}
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-gray-700">Total Amount</label>
+                      <input
+                        type="number"
+                        name="total_amount"
+                        value={entry.total_amount}
+                        readOnly
+                        className="w-full px-2 py-1 border border-gray-300 rounded bg-gray-100"
+                      />
+                    </div>
+
+                    {itineraryList.length > 1 && (
+                      <button
+                        onClick={() => removeItinerary(index)}
+                        type="button"
+                        className="text-red-500 text-sm mt-1"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                <button
+                  onClick={addItinerary}
+                  type="button"
+                  className="text-blue-600 text-sm mt-2"
+                >
+                  + Add Itinerary
+                </button>
+              </div>
+            )}
+
 
           {/* Validation Tab */}
           {activeTab === 'validation' && (
-            <div className="text-sm text-gray-600 italic">
-              Please review all details before submission.
+            <div className="mb-4">
+              <label className="block mb-1 text-sm font-medium text-gray-700">Prepared By</label>
+              <select
+                name="prepared_by"
+                value={formData.prepared_by}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded"
+              >
+                <option value="">-- Select Employee --</option>
+                {employeeList.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.first_name} {emp.last_name}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
+                      )}
 
           <div className="flex justify-between items-center pt-4 border-t">
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-sm text-gray-600 hover:text-gray-800"
-            >
+            <button type="button" onClick={onClose} className="text-sm text-gray-600 hover:text-gray-800">
               Cancel
             </button>
             <div className="flex space-x-2">
               {activeTab !== 'identification' && (
-                <button
-                  type="button"
-                  onClick={goToPreviousTab}
-                  className="bg-gray-200 hover:bg-gray-300 text-sm px-4 py-1 rounded"
-                >
+                <button type="button" onClick={goToPreviousTab} className="bg-gray-200 hover:bg-gray-300 text-sm px-4 py-1 rounded">
                   Back
                 </button>
               )}

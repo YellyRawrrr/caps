@@ -4,8 +4,8 @@ from rest_framework import status, permissions
 from django.shortcuts import get_object_or_404
 import json
 from django.utils import timezone
-from .models import TravelOrder, Signature, CustomUser
-from .serializers import TravelOrderSerializer, UserSerializer
+from .models import TravelOrder, Signature, CustomUser, Fund, Transportation
+from .serializers import TravelOrderSerializer, UserSerializer, FundSerializer, TransportationSerializer
 from .utils import get_approval_chain, get_next_head
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
@@ -14,6 +14,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+from django.contrib.auth.hashers import make_password
 
 
 @api_view(['POST'])
@@ -127,6 +128,50 @@ class TravelOrderCreateView(APIView):
 
         print("Validation errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class FundListCreateView(APIView):
+    def get(self, request):
+        funds = Fund.objects.all()
+        serializer = FundSerializer(funds, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = FundSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class FundDetailView(APIView):
+    def put(self, request, pk):
+        fund = get_object_or_404(Fund, pk=pk)
+        serializer = FundSerializer(fund, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class TransportationCreateView(APIView):
+    def get(self, request):
+        transportation = Transportation.objects.all()
+        serializer = TransportationSerializer(transportation, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = TransportationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class TransportationDetailView(APIView):
+    def put(self, request, pk):
+        transportation = get_object_or_404(Transportation, pk=pk)
+        serializer = TransportationSerializer(transportation, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # View: MY FILED TRAVEL ORDERS
 class MyTravelOrdersView(APIView):
@@ -155,8 +200,6 @@ class TravelOrderApprovalsView(APIView):
         orders = TravelOrder.objects.filter(current_approver=user, status='Pending')
         serializer = TravelOrderSerializer(orders.distinct(), many=True)
         return Response(serializer.data)
-
-
 
 
 class TravelOrderDetailView(APIView):
@@ -303,4 +346,45 @@ class EmployeeListView(APIView):
     def get(self, request):
         users = CustomUser.objects.all()
         serializer = UserSerializer(users, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        data = request.data.copy()
+        if 'password' in data:
+            data['password'] = make_password(data['password'])
+
+        serializer = UserSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class EmployeeDetailUpdateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def put(self, request, pk):
+        try:
+            user = CustomUser.objects.get(id=pk)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data.copy()
+        if 'password' in data and not data['password']:
+            data.pop('password')
+        elif 'password' in data:
+            data['password'] = make_password(data['password'])
+
+        serializer = UserSerializer(user, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class AdminTravelView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        travel = TravelOrder.objects.all()
+        serializer = TravelOrderSerializer(travel, many=True)
         return Response(serializer.data)

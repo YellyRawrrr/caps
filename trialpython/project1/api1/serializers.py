@@ -1,8 +1,14 @@
 from rest_framework import serializers
-from .models import TravelOrder, Signature, CustomUser, Itinerary
+from .models import TravelOrder, Signature, CustomUser, Itinerary, Fund, Transportation
 from django.contrib.auth.hashers import make_password
 
+class TransportationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Transportation
+        fields = ['id', 'means_of_transportation']
+
 class ItinerarySerializer(serializers.ModelSerializer):
+    transportation = serializers.PrimaryKeyRelatedField( queryset=Transportation.objects.all(), allow_null=True)
     class Meta:
         model = Itinerary
         fields = '__all__'
@@ -10,11 +16,15 @@ class ItinerarySerializer(serializers.ModelSerializer):
             'travel_order': {'required': False}
         }
 
-
+class FundSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Fund
+        fields = ['id', 'source_of_fund']
 
 class TravelOrderSerializer(serializers.ModelSerializer):
     employees = serializers.PrimaryKeyRelatedField(many=True, queryset=CustomUser.objects.all())
     employee_names = serializers.SerializerMethodField()
+    prepared_by = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
     itinerary = ItinerarySerializer(many=True)
 
     class Meta:

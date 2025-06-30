@@ -2,7 +2,10 @@ from django.urls import path
 from .views import (
     TravelOrderCreateView, ApproveTravelOrderView, ResubmitTravelOrderView,
     CurrentUserView,TravelOrderUpdateView,TravelOrderDetailView,
-    EmployeeListView, MyTravelOrdersView, TravelOrderApprovalsView, login_view, logout_view,
+    EmployeeListView, MyTravelOrdersView, TravelOrderApprovalsView,
+    FundListCreateView, TransportationCreateView,AdminTravelView,
+    FundDetailView,TransportationDetailView, EmployeeDetailUpdateView,
+    login_view, logout_view,
     refresh_token_view, protected_view
 )
 
@@ -13,8 +16,10 @@ urlpatterns = [
     path('refresh/', refresh_token_view),
     path('protected/', protected_view),
 
-    #Users
+    #Users/Admin
     path('employees/', EmployeeListView.as_view(), name='employee-list'),
+    path('employees/<int:pk>/', EmployeeDetailUpdateView.as_view(), name='employee-update'),
+    path('admin/travels/',AdminTravelView.as_view(), name='admin-travels'),
 
     # Travel Order Routes
     path('travel-orders/', TravelOrderCreateView.as_view(), name='create-travel-order'),
@@ -22,6 +27,12 @@ urlpatterns = [
     path('my-travel-orders/', MyTravelOrdersView.as_view(), name='my-travel-orders'),
     path('my-pending-approvals/', TravelOrderApprovalsView.as_view(), name='travel-order-approvals'),
     path('travel-orders/<int:pk>/', TravelOrderDetailView.as_view(), name='travel-order-detail'),
+
+    #travels settings
+    path('funds/', FundListCreateView.as_view(), name='funds'),
+    path('transportation/', TransportationCreateView .as_view(), name='transportation'),
+    path('funds/<int:pk>/', FundDetailView.as_view(), name='fund-detail'),
+    path('transportation/<int:pk>/', TransportationDetailView.as_view(), name='transportation-detail'),
 
     path('update-travel-order/<int:pk>/', TravelOrderUpdateView.as_view(), name='update-travel-order'),
     path('approve-travel-order/<int:pk>/', ApproveTravelOrderView.as_view(), name='approve-travel-order'),
