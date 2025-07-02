@@ -71,15 +71,16 @@ export default function MyTravels() {
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">
                       <span
                         className={`px-2 py-1 rounded text-xs font-medium ${
-                          order.status === 'Approved'
+                          order.status?.toLowerCase().includes('approved')
                             ? 'bg-green-100 text-green-800'
-                            : order.status === 'Rejected'
+                            : order.status?.toLowerCase().includes('rejected')
                             ? 'bg-red-100 text-red-800'
                             : 'bg-yellow-100 text-yellow-800'
                         }`}
                       >
                         {order.status}
                       </span>
+
                     </td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b text-right">
                       <button

@@ -28,7 +28,7 @@ const EmployeeTravel = () => {
           <table className="min-w-full table-auto">
             <thead className="bg-gray-100">
               <tr>
-                {['Destination', 'Purpose', 'Departure', 'Return','Actions'].map((header) => (
+                {['Destination', 'Purpose', 'Departure', 'Return','Status','Actions'].map((header) => (
                   <th
                     key={header}
                     className={`px-6 py-3 text-sm font-semibold text-gray-700 border-b ${
@@ -48,6 +48,20 @@ const EmployeeTravel = () => {
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.purpose}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.date_travel_from}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.date_travel_to}</td>
+                    <td className="px-6 py-3 text-sm text-gray-800 border-b">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-medium ${
+                          order.status?.toLowerCase().includes('approved')
+                            ? 'bg-green-100 text-green-800'
+                            : order.status?.toLowerCase().includes('rejected')
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
+                        {order.status}
+                      </span>
+
+                    </td>      
                     <td className="px-6 py-4 text-sm text-gray-800 border-b text-right">
                       <button
                         onClick={() => handleViewOrder(user)}

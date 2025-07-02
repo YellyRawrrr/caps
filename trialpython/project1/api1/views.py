@@ -197,7 +197,7 @@ class TravelOrderApprovalsView(APIView):
         user = request.user
 
         # Only show if the current user is the current approver
-        orders = TravelOrder.objects.filter(current_approver=user, status='Pending')
+        orders = TravelOrder.objects.filter(current_approver=user).exclude(status__in=['Approved', 'Rejected'])
         serializer = TravelOrderSerializer(orders.distinct(), many=True)
         return Response(serializer.data)
 
@@ -235,16 +235,52 @@ class ApproveTravelOrderView(APIView):
         comment = request.data.get('comment')
         signature = request.data.get('signature')
 
+        # Map employee_type to status strings
+        status_map = {
+            'csc': {
+                'approve': 'The travel order has been approved by CSC head',
+                'reject': 'The travel order has been rejected by CSC head',
+            },
+            'po': {
+                'approve': 'The travel order has been approved by PO head',
+                'reject': 'The travel order has been rejected by PO head',
+            },
+            'tmsd': {
+                'approve': 'The travel order has been approved by TMSD chief',
+                'reject': 'The travel order has been rejected by TMSD chief',
+            },
+            'afsd': {
+                'approve': 'The travel order has been approved by AFSD chief',
+                'reject': 'The travel order has been rejected by AFSD chief',
+            },
+            'regional': {
+                'approve': 'The travel order has been approved by the Regional Director',
+                'reject': 'The travel order has been rejected by the Regional Director',
+            }
+        }
+
         if decision == 'approve':
             employee = order.employees.first()
             chain = get_approval_chain(employee)
             next_stage = order.approval_stage + 1
             next_head = get_next_head(chain, next_stage)
 
+            # Determine current stage's employee_type
+            current_stage = None
+            if order.approval_stage < len(chain):
+                current_stage = chain[order.approval_stage]
+            else:
+                # If no more stages, it's regional director
+                current_stage = 'regional'
+
             if next_head:
                 order.current_approver = next_head
                 order.approval_stage = next_stage
+                # Set status for this stage
+                if current_stage in status_map:
+                    order.status = status_map[current_stage]['approve']
             else:
+                # Final approval
                 order.status = 'Approved'
                 order.current_approver = None
 
@@ -261,10 +297,23 @@ class ApproveTravelOrderView(APIView):
             return Response({"message": "Travel order approved."}, status=200)
 
         elif decision == 'reject':
+            # Determine current stage's employee_type
+            employee = order.employees.first()
+            chain = get_approval_chain(employee)
+            current_stage = None
+            if order.approval_stage < len(chain):
+                current_stage = chain[order.approval_stage]
+            else:
+                current_stage = 'regional'
+
             if not comment:
                 return Response({"error": "Rejection comment is required."}, status=400)
 
-            order.status = 'Rejected'
+            if current_stage in status_map:
+                order.status = status_map[current_stage]['reject']
+            else:
+                order.status = 'Rejected'
+
             order.rejection_comment = comment
             order.rejected_by = user
             order.rejected_at = timezone.now()

@@ -117,7 +117,7 @@ const AdminSettings = () => {
                   >
                     <td className="px-6 py-4">{fund.source_of_fund}</td>
                     <td className="px-6 py-4 text-right space-x-2">
-                      <button className="text-white bg-red-600 hover:bg-red-700 transition px-3 py-1.5 rounded-md">
+                     <button className="text-white bg-red-600 hover:bg-red-700 transition px-3 py-1.5 rounded-md">
                         Delete
                       </button>
                       <button
@@ -168,7 +168,7 @@ const AdminSettings = () => {
                   >
                     <td className="px-6 py-4">{transportation.means_of_transportation}</td>
                     <td className="px-6 py-4 text-right space-x-2">
-                      <button className="text-white bg-red-600 hover:bg-red-700 transition px-3 py-1.5 rounded-md">
+                     <button className="text-white bg-red-600 hover:bg-red-700 transition px-3 py-1.5 rounded-md">
                         Delete
                       </button>
                       <button

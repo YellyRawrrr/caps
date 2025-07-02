@@ -41,8 +41,16 @@ class Fund(models.Model):
 class TravelOrder(models.Model):
     STATUS_CHOICES = [
         ('Pending', 'Pending'),
-        ('Approved', 'Approved'),
-        ('Rejected', 'Rejected'),
+        ('The travel order has been approved by CSC head', 'The travel order has been approved by CSC head'),
+        ('The travel order has been approved by PO head', 'The travel order has been approved by PO head'),
+        ('The travel order has been approved by TMSD chief', 'The travel order has been approved by TMSD chief'), 
+        ('The travel order has been approved by AFSD chief', 'The travel order has been approved by AFSD chief'),
+        ('The travel order has been approved by the Regional Director', 'The travel order has been approved by the Regional Director'),
+        ('The travel order has been rejected by CSC head', 'The travel order has been rejected by CSC head'),
+        ('The travel order has been rejected by PO head', 'The travel order has been rejected by PO head'),
+        ('The travel order has been rejected by TMSD chief', 'The travel order has been rejected by TMSD chief'),
+        ('The travel order has been rejected by AFSD chief', 'The travel order has been rejected by AFSD chief'),
+        ('The travel order has been rejected by the Regional Director', 'The travel order has been rejected by the Regional Director'),
     ]
 
     MODE_OF_FILING = [
@@ -73,7 +81,7 @@ class TravelOrder(models.Model):
     #validation
     prepared_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='prepared_travel_order')
 
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    status = models.CharField(max_length=150, choices=STATUS_CHOICES, default='Pending')
     approval_stage = models.IntegerField(default=0)
     current_approver = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL, related_name='approving_orders')
 
