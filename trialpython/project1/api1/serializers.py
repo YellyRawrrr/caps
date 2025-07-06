@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import TravelOrder, Signature, CustomUser, Itinerary, Fund, Transportation
+from .models import TravelOrder, Signature, CustomUser, Itinerary, Fund, Transportation, EmployeePosition
 from django.contrib.auth.hashers import make_password
 
 class TransportationSerializer(serializers.ModelSerializer):
@@ -26,6 +26,7 @@ class TravelOrderSerializer(serializers.ModelSerializer):
     employee_names = serializers.SerializerMethodField()
     prepared_by = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
     itinerary = ItinerarySerializer(many=True)
+    employee_position = serializers.PrimaryKeyRelatedField(queryset=EmployeePosition.objects.all(), allow_null=True, required=False)
 
     class Meta:
         model = TravelOrder
@@ -47,17 +48,21 @@ class TravelOrderSerializer(serializers.ModelSerializer):
         return travel_order
 
 
-
+class EmployeePositionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmployeePosition
+        fields = ['id', 'position_name']
 
 
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
     full_name = serializers.SerializerMethodField()
+    position = serializers.StringRelatedField()
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'password', 'user_level', 'employee_type', 'first_name', 'last_name', 'full_name']
+        fields = ['id', 'username', 'password', 'user_level', 'employee_type', 'first_name', 'last_name', 'full_name', 'position']
 
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}"

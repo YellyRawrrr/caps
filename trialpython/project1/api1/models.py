@@ -5,6 +5,12 @@ from django.utils import timezone
 from django.core.validators import MinValueValidator
 from django.contrib.auth.models import AbstractUser
 
+class EmployeePosition(models.Model):
+    position_name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.position_name
+
 # --- ACCOUNTS ---
 USER_LEVEL_CHOICES = [
     ('employee', 'Employee'),
@@ -24,6 +30,7 @@ EMPLOYEE_TYPE_CHOICES = [
 class CustomUser(AbstractUser):
     user_level = models.CharField(max_length=20, choices=USER_LEVEL_CHOICES)
     employee_type = models.CharField(max_length=20, choices=EMPLOYEE_TYPE_CHOICES, blank=True, null=True)
+    employee_position = models.ForeignKey(EmployeePosition, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
 
     @property
     def full_name(self):
@@ -40,16 +47,16 @@ class Fund(models.Model):
 
 class TravelOrder(models.Model):
     STATUS_CHOICES = [
-        ('Pending', 'Pending'),
-        ('The travel order has been approved by CSC head', 'The travel order has been approved by CSC head'),
-        ('The travel order has been approved by PO head', 'The travel order has been approved by PO head'),
-        ('The travel order has been approved by TMSD chief', 'The travel order has been approved by TMSD chief'), 
-        ('The travel order has been approved by AFSD chief', 'The travel order has been approved by AFSD chief'),
+        ('Travel order is placed', 'Travel order is placed'),
+        ('The travel order has been approved by the CSC head', 'The travel order has been approved by the CSC head'),
+        ('The travel order has been rejected by the CSC head.', 'The travel order has been rejected by the CSC head'),
+        ('The travel order has been approved by the PO head', 'The travel order has been approved by the PO head'),
+        ('The travel order has been rejected by the PO head', 'The travel order has been rejected by the PO head'),
+        ('The travel order has been approved by the TMSD chief', 'The travel order has been approved by the TMSD chief'),
+        ('The travel order has been rejected by the TMSD chief', 'The travel order has been rejected by the TMSD chief'),
+        ('The travel order has been approved by the AFSD chief', 'The travel order has been approved by the AFSD chief'),
+        ('The travel order has been rejected by the AFSD Chief', 'The travel order has been rejected by the AFSD Chief'),
         ('The travel order has been approved by the Regional Director', 'The travel order has been approved by the Regional Director'),
-        ('The travel order has been rejected by CSC head', 'The travel order has been rejected by CSC head'),
-        ('The travel order has been rejected by PO head', 'The travel order has been rejected by PO head'),
-        ('The travel order has been rejected by TMSD chief', 'The travel order has been rejected by TMSD chief'),
-        ('The travel order has been rejected by AFSD chief', 'The travel order has been rejected by AFSD chief'),
         ('The travel order has been rejected by the Regional Director', 'The travel order has been rejected by the Regional Director'),
     ]
 
@@ -64,6 +71,7 @@ class TravelOrder(models.Model):
     ]
 
     employees = models.ManyToManyField(CustomUser, related_name='travel_orders')
+    travel_order_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
     #new
     mode_of_filing = models.CharField(max_length=20, choices=MODE_OF_FILING, blank=True)
     evidence = models.ImageField(null=True, blank=True, upload_to='evidence/')
@@ -80,8 +88,8 @@ class TravelOrder(models.Model):
 
     #validation
     prepared_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='prepared_travel_order')
-
-    status = models.CharField(max_length=150, choices=STATUS_CHOICES, default='Pending')
+    employee_position = models.ForeignKey(EmployeePosition, on_delete=models.SET_NULL, null=True, blank=True, related_name='travel_orders')
+    status = models.CharField(max_length=100, choices=STATUS_CHOICES, default='Travel order is placed')
     approval_stage = models.IntegerField(default=0)
     current_approver = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL, related_name='approving_orders')
 

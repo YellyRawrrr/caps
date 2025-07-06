@@ -19,12 +19,19 @@ export default function ApproveTravel({ isOpen, onClose, orderId, fetchOrders })
     const signature = sigPadRef.current.getCanvas().toDataURL('image/png');
 
     try {
-      await axios.patch(`/approve-travel-order/${orderId}/`, {
+      const response = await axios.patch(`/approve-travel-order/${orderId}/`, {
         decision: 'approve',
         signature
       });
 
-      toast.success('Approved successfully!');
+      const travelNumber = response?.data?.travel_order_number;
+
+      if (travelNumber) {
+        toast.success(`Approved! Travel Order No: ${travelNumber}`);
+      } else {
+        toast.success('Approved successfully!');
+      }
+
       onClose();
       if (fetchOrders) fetchOrders();
 
@@ -33,6 +40,7 @@ export default function ApproveTravel({ isOpen, onClose, orderId, fetchOrders })
       console.error(err);
       toast.error('Approval failed!');
     }
+
   };
 
   return (

@@ -4,8 +4,8 @@ from rest_framework import status, permissions
 from django.shortcuts import get_object_or_404
 import json
 from django.utils import timezone
-from .models import TravelOrder, Signature, CustomUser, Fund, Transportation
-from .serializers import TravelOrderSerializer, UserSerializer, FundSerializer, TransportationSerializer
+from .models import TravelOrder, Signature, CustomUser, Fund, Transportation, EmployeePosition
+from .serializers import TravelOrderSerializer, UserSerializer, FundSerializer, TransportationSerializer, EmployeePositionSerializer
 from .utils import get_approval_chain, get_next_head
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
@@ -121,7 +121,7 @@ class TravelOrderCreateView(APIView):
         # Validate and save
         serializer = TravelOrderSerializer(data=data)
         if serializer.is_valid():
-            travel_order = serializer.save()
+            travel_order = serializer.save(prepared_by=user)
             travel_order.number_of_employees = travel_order.employees.count()
             travel_order.save()
             return Response(TravelOrderSerializer(travel_order).data, status=status.HTTP_201_CREATED)
@@ -131,7 +131,7 @@ class TravelOrderCreateView(APIView):
     
 class FundListCreateView(APIView):
     def get(self, request):
-        funds = Fund.objects.all()
+        funds = Fund.objects.all().order_by('-id')
         serializer = FundSerializer(funds, many=True)
         return Response(serializer.data)
 
@@ -153,7 +153,7 @@ class FundDetailView(APIView):
 
 class TransportationCreateView(APIView):
     def get(self, request):
-        transportation = Transportation.objects.all()
+        transportation = Transportation.objects.all().order_by('-id')
         serializer = TransportationSerializer(transportation, many=True)
         return Response(serializer.data)
 
@@ -172,6 +172,28 @@ class TransportationDetailView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class EmployeePositionCreateView(APIView):
+    def get(self, request):
+        emp_position = EmployeePosition.objects.all().order_by('-id')
+        serializer = EmployeePositionSerializer(emp_position, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = EmployeePositionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class EmployeePositionDetailView(APIView):
+    def put(self, request, pk):
+        emp_position = get_object_or_404(EmployeePosition, pk=pk)
+        serializer = EmployeePositionSerializer(emp_position, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # View: MY FILED TRAVEL ORDERS
 class MyTravelOrdersView(APIView):
@@ -181,9 +203,9 @@ class MyTravelOrdersView(APIView):
         user = request.user
 
         if user.user_level == 'admin':
-            orders = TravelOrder.objects.all()
+            orders = TravelOrder.objects.all().order_by('-submitted_at')
         else:
-            orders = TravelOrder.objects.filter(employees=user)
+            orders = TravelOrder.objects.filter(employees=user).order_by('-submitted_at')
 
         serializer = TravelOrderSerializer(orders.distinct(), many=True)
         return Response(serializer.data)
@@ -196,10 +218,18 @@ class TravelOrderApprovalsView(APIView):
     def get(self, request):
         user = request.user
 
-        # Only show if the current user is the current approver
-        orders = TravelOrder.objects.filter(current_approver=user).exclude(status__in=['Approved', 'Rejected'])
+        orders = TravelOrder.objects.filter(
+            current_approver=user
+        ).exclude(
+            status__in=[
+                'The travel order has been approved by the Regional Director',
+                'The travel order has been rejected by the Regional Director',
+            ]
+        ).order_by('-submitted_at')
+
         serializer = TravelOrderSerializer(orders.distinct(), many=True)
         return Response(serializer.data)
+
 
 
 class TravelOrderDetailView(APIView):
@@ -235,23 +265,23 @@ class ApproveTravelOrderView(APIView):
         comment = request.data.get('comment')
         signature = request.data.get('signature')
 
-        # Map employee_type to status strings
+        # Map employee_type to status strings from your STATUS_CHOICES
         status_map = {
             'csc': {
-                'approve': 'The travel order has been approved by CSC head',
-                'reject': 'The travel order has been rejected by CSC head',
+                'approve': 'The travel order has been approved by the CSC head',
+                'reject': 'The travel order has been rejected by the CSC head.',
             },
             'po': {
-                'approve': 'The travel order has been approved by PO head',
-                'reject': 'The travel order has been rejected by PO head',
+                'approve': 'The travel order has been approved by the PO head',
+                'reject': 'The travel order has been rejected by the PO head',
             },
             'tmsd': {
-                'approve': 'The travel order has been approved by TMSD chief',
-                'reject': 'The travel order has been rejected by TMSD chief',
+                'approve': 'The travel order has been approved by the TMSD chief',
+                'reject': 'The travel order has been rejected by the TMSD chief',
             },
             'afsd': {
-                'approve': 'The travel order has been approved by AFSD chief',
-                'reject': 'The travel order has been rejected by AFSD chief',
+                'approve': 'The travel order has been approved by the AFSD chief',
+                'reject': 'The travel order has been rejected by the AFSD Chief',
             },
             'regional': {
                 'approve': 'The travel order has been approved by the Regional Director',
@@ -260,29 +290,42 @@ class ApproveTravelOrderView(APIView):
         }
 
         if decision == 'approve':
-            employee = order.employees.first()
-            chain = get_approval_chain(employee)
-            next_stage = order.approval_stage + 1
-            next_head = get_next_head(chain, next_stage)
+            filer = order.prepared_by
+            chain = get_approval_chain(filer)
+            current_stage = chain[order.approval_stage] if order.approval_stage < len(chain) else 'regional'
 
-            # Determine current stage's employee_type
-            current_stage = None
-            if order.approval_stage < len(chain):
-                current_stage = chain[order.approval_stage]
-            else:
-                # If no more stages, it's regional director
-                current_stage = 'regional'
+            next_stage = order.approval_stage + 1
+            next_head = get_next_head(chain, next_stage, current_user=user)
+
+            if current_stage in status_map:
+                order.status = status_map[current_stage]['approve']
 
             if next_head:
                 order.current_approver = next_head
                 order.approval_stage = next_stage
-                # Set status for this stage
-                if current_stage in status_map:
-                    order.status = status_map[current_stage]['approve']
             else:
-                # Final approval
-                order.status = 'Approved'
+                # ✅ Final approval by Regional Director
                 order.current_approver = None
+                order.status = status_map['regional']['approve']
+
+                # ✅ Auto-generate travel order number
+                if not order.travel_order_number:
+                    today = timezone.now().date()
+                    prefix = f"TO-{today.strftime('%Y%m%d')}-"
+                    last_order = TravelOrder.objects.filter(
+                        travel_order_number__startswith=prefix
+                    ).order_by('-travel_order_number').first()
+
+                    if last_order and last_order.travel_order_number:
+                        try:
+                            last_number = int(last_order.travel_order_number.split('-')[-1])
+                            next_number = last_number + 1
+                        except (IndexError, ValueError):
+                            next_number = 1
+                    else:
+                        next_number = 1
+
+                    order.travel_order_number = f"{prefix}{next_number:04d}"
 
             order.is_resubmitted = False
 
@@ -296,18 +339,14 @@ class ApproveTravelOrderView(APIView):
             order.save()
             return Response({"message": "Travel order approved."}, status=200)
 
-        elif decision == 'reject':
-            # Determine current stage's employee_type
-            employee = order.employees.first()
-            chain = get_approval_chain(employee)
-            current_stage = None
-            if order.approval_stage < len(chain):
-                current_stage = chain[order.approval_stage]
-            else:
-                current_stage = 'regional'
 
+        elif decision == 'reject':
             if not comment:
                 return Response({"error": "Rejection comment is required."}, status=400)
+
+            filer = order.prepared_by
+            chain = get_approval_chain(filer)
+            current_stage = chain[order.approval_stage] if order.approval_stage < len(chain) else 'regional'
 
             if current_stage in status_map:
                 order.status = status_map[current_stage]['reject']
@@ -327,6 +366,7 @@ class ApproveTravelOrderView(APIView):
 
 
 
+
 @method_decorator(csrf_exempt, name='dispatch')
 class ResubmitTravelOrderView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -335,25 +375,38 @@ class ResubmitTravelOrderView(APIView):
         order = get_object_or_404(TravelOrder, pk=pk)
         user = request.user
 
+        # Ensure user is among original employees
         if not order.employees.filter(id=user.id).exists():
             return Response({"error": "Unauthorized."}, status=403)
 
         if order.status != 'Rejected':
             return Response({"error": "Only rejected orders can be resubmitted."}, status=400)
 
-        if not order.rejected_by:
-            return Response({"error": "No rejecting head to return to."}, status=400)
+        # Get approval chain based on the filer
+        filer = order.prepared_by
+        approval_chain = get_approval_chain(filer)
+        next_head = get_next_head(approval_chain, 0, current_user=filer)
 
-        order.status = 'Pending'
-        order.current_approver = order.rejected_by
-        order.approval_stage = -1
+        if not next_head:
+            return Response({"error": "No head found to reassign this order to."}, status=400)
+
+        # Reset important fields
+        order.status = 'Travel order is placed'
+        order.current_approver = next_head
+        order.approval_stage = 0
         order.is_resubmitted = True
         order.rejection_comment = None
         order.rejected_at = None
         order.rejected_by = None
+        order.travel_order_number = None  # Clear the old number if it existed
+
         order.save()
 
-        return Response({"message": "Resubmitted to rejecting head."}, status=200)
+        return Response({
+            "message": f"Travel order successfully resubmitted to {next_head.username}."
+        }, status=200)
+
+
 
 
 class TravelOrderUpdateView(APIView):
@@ -393,7 +446,7 @@ class EmployeeListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        users = CustomUser.objects.all()
+        users = CustomUser.objects.all().order_by('-id')
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data)
 
@@ -434,6 +487,6 @@ class AdminTravelView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        travel = TravelOrder.objects.all()
+        travel = TravelOrder.objects.all().order_by('-submitted_at')
         serializer = TravelOrderSerializer(travel, many=True)
         return Response(serializer.data)

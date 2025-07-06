@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import Layout from './Layout';
+import toast from 'react-hot-toast';
 
 export default function RejectedOrders() {
   const [orders, setOrders] = useState([]);
@@ -10,14 +11,14 @@ export default function RejectedOrders() {
   useEffect(() => {
     const fetch = async () => {
       const res = await axios.get('/my-travel-orders/');
-      setOrders(res.data.filter(order => order.status === 'Rejected'));
+      setOrders(res.data.filter(order => order.status.toLowerCase().includes('rejected')));
     };
     fetch();
   }, []);
 
   const resubmit = async (id) => {
     await axios.patch(`resubmit-travel-order/${id}/`);
-    alert('Resubmitted!');
+    toast.success('Resubmitted!');
     setOrders(prev => prev.filter(o => o.id !== id));
   };
 

@@ -54,7 +54,17 @@ const Sidebar = ({ fetchOrders }) => {
           <p className="text-base font-bold text-gray-500 uppercase mb-5 tracking-wide">Travels</p>
           <nav className="space-y-5 text-[18px]">
             <NavLink
-              to="/dashboard"
+              to={
+                user?.user_level === 'admin'
+                  ? '/admin-dashboard'
+                  : user?.user_level === 'director'
+                  ? '/director-dashboard'
+                  : user?.user_level === 'head'
+                  ? '/head-dashboard'
+                  : user?.user_level === 'employee'
+                  ? '/employee-dashboard'
+                  : '/dashboard'
+              }
               className={({ isActive }) =>
                 `flex items-center gap-4 px-3 py-2 rounded-lg transition ${
                   isActive ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-800 hover:text-blue-700'

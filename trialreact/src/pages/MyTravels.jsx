@@ -50,7 +50,7 @@ export default function MyTravels() {
           <table className="min-w-full table-auto border-collapse">
             <thead className="bg-gray-100">
               <tr>
-                {['Destination', 'Purpose', 'Departure', 'Return', 'Status', 'Actions'].map((header) => (
+                {['Travel Order Number','Destination', 'Purpose', 'Departure', 'Return', 'Status', 'Actions'].map((header) => (
                   <th
                     key={header}
                     className={`px-6 py-3 text-sm font-medium text-gray-600 border-b ${header === 'Actions' ? 'text-right' : 'text-left'}`}
@@ -64,6 +64,7 @@ export default function MyTravels() {
               {orders.length > 0 ? (
                 orders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-100">
+                    <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.travel_order_number}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.destination}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.purpose}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.date_travel_from}</td>

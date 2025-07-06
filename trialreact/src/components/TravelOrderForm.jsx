@@ -23,6 +23,7 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
     date_of_filing: new Date().toISOString().split('T')[0],
     fund_cluster: '',
     prepared_by: '',
+    employee_position: '',
   });
 
   const [itineraryList, setItineraryList] = useState([
@@ -40,6 +41,8 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
 
   const [fundList, setFundList] = useState([]);
   const [transportationList, setTransportationList] = useState([]); // ← ADD THIS
+  const [employeePositions, setEmployeePositions] = useState([]);
+  const [preparedByPositionName, setPreparedByPositionName] = useState('');
   const [minDateFrom, setMinDateFrom] = useState('');
   const [minDateTo, setMinDateTo] = useState('');
   const [employeeList, setEmployeeList] = useState([]);
@@ -52,30 +55,78 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
     return date.toISOString().split('T')[0];
   };
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-  try {
-    const [empRes, userRes, fundRes, transRes] = await Promise.all([
-      axios.get('employees/'),
-      axios.get('user-info/'),
-      axios.get('funds/'),
-      axios.get('transportation/'),
-    ]);
-    setEmployeeList(empRes.data);
-    setCurrentUserId(userRes.data.id);
-    setFundList(fundRes.data);
-    setTransportationList(transRes.data); 
+useEffect(() => {
+  const fetchInitialData = async () => {
+    try {
+      const [empRes, userRes, fundRes, transRes, posRes] = await Promise.all([
+        axios.get('employees/'),
+        axios.get('user-info/'),
+        axios.get('funds/'),
+        axios.get('transportation/'),
+        axios.get('employee-position/'),
+      ]);
 
-    setFormData((prev) => ({
-      ...prev,
-      prepared_by: userRes.data.id.toString(),
-    }));
-  } catch (err) {
-    console.error('Failed to fetch data:', err);
-  }
-};
-    fetchInitialData();
-  }, []);
+      setEmployeeList(empRes.data);
+      setCurrentUserId(userRes.data.id);
+      setFundList(fundRes.data);
+      setTransportationList(transRes.data);
+      setEmployeePositions(posRes.data);
+
+      const preparedEmp = empRes.data.find(
+        (e) => e.id === userRes.data.id
+      );
+
+      const position = preparedEmp?.employee_position
+        ? posRes.data.find((p) => p.id === preparedEmp.employee_position)
+        : null;
+
+      setPreparedByPositionName(position?.position_name || '');
+
+      setFormData((prev) => ({
+        ...prev,
+        prepared_by: userRes.data.id.toString(),
+        employee_position: preparedEmp?.employee_position?.toString() || '',
+      }));
+    } catch (err) {
+      console.error('Failed to fetch data:', err);
+    }
+  };
+
+  fetchInitialData();
+}, []);
+
+
+useEffect(() => {
+  const fetchPreparedByPosition = async () => {
+    if (!formData.prepared_by) {
+      setPreparedByPositionName('');
+      return;
+    }
+
+    const emp = employeeList.find(
+      (e) => e.id === parseInt(formData.prepared_by)
+    );
+
+    if (emp?.employee_position) {
+      const pos = employeePositions.find(
+        (p) => p.id === emp.employee_position
+      );
+      setPreparedByPositionName(pos?.position_name || '');
+
+      // Optional: set this if sending to backend
+      // setFormData((prev) => ({
+      //   ...prev,
+      //   employee_position: emp.employee_position?.toString() || '',
+      // }));
+    } else {
+      setPreparedByPositionName('');
+    }
+  };
+
+  fetchPreparedByPosition();
+}, [formData.prepared_by, employeeList, employeePositions]);
+
+
 
   useEffect(() => {
     const updatedMinDateFrom =
@@ -171,21 +222,23 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
     e.preventDefault();
 
     const validEmployees = selectedEmployees.filter((id) => !!id);
-    const payload = {
-      ...formData,
-      fund: formData.fund ? Number(formData.fund) : null,
-      prepared_by: formData.prepared_by ? Number(formData.prepared_by) : null,
-      employees: [currentUserId, ...validEmployees].map(Number),
-      number_of_employees: validEmployees.length + 1,
-      itinerary: itineraryList.map((item) => ({
-        ...item,
-        transportation_allowance:
-          parseFloat(item.transportation_allowance) || 0,
-        per_diem: parseFloat(item.per_diem) || 0,
-        other_expense: parseFloat(item.other_expense) || 0,
-        total_amount: parseFloat(item.total_amount) || 0,
-      })),
-    };
+const payload = {
+  ...formData,
+  fund: formData.fund ? Number(formData.fund) : null,
+  prepared_by: formData.prepared_by ? Number(formData.prepared_by) : null,
+  // Optional: include this if backend accepts it
+  // employee_position: formData.employee_position ? Number(formData.employee_position) : null,
+  employees: [currentUserId, ...validEmployees].map(Number),
+  number_of_employees: validEmployees.length + 1,
+  itinerary: itineraryList.map((item) => ({
+    ...item,
+    transportation_allowance: parseFloat(item.transportation_allowance) || 0,
+    per_diem: parseFloat(item.per_diem) || 0,
+    other_expense: parseFloat(item.other_expense) || 0,
+    total_amount: parseFloat(item.total_amount) || 0,
+  })),
+};
+
 
     try {
       const response = await axios.post('travel-orders/', payload);
@@ -261,21 +314,26 @@ const isCurrentTabValid = () => {
           Travel Request Form
         </h2>
 
-        <nav className="flex border-b mb-4">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium capitalize ${
-                activeTab === tab
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-500 hover:text-blue-600 hover:border-blue-300'
-              }`}
-            >
-              {tabLabels[tab]}
-            </button>
+        {/* Stepper UI */}
+        <div className="flex items-center justify-between mb-6">
+          {tabs.map((tab, idx) => (
+            <div key={tab} className="flex-1 flex flex-col items-center">
+              <div
+                className={`w-8 h-8 flex items-center justify-center rounded-full border-2 text-sm font-bold mb-1
+                  ${activeTab === tab ? 'border-blue-600 bg-blue-600 text-white' :
+                    idx < tabs.indexOf(activeTab) ? 'border-green-500 bg-green-500 text-white' :
+                    'border-gray-300 bg-white text-gray-500'}
+                `}
+              >
+                {idx + 1}
+              </div>
+              <span className={`text-xs ${activeTab === tab ? 'text-blue-600 font-semibold' : 'text-gray-500'}`}>{tabLabels[tab]}</span>
+              {idx < tabs.length - 1 && (
+                <div className="w-full h-0.5 bg-gray-300 mt-1 mb-1" style={{ minWidth: 24 }}></div>
+              )}
+            </div>
           ))}
-        </nav>
+        </div>
 
         <form onSubmit={handleSubmit}
               onKeyDown={(e) => {
@@ -285,7 +343,7 @@ const isCurrentTabValid = () => {
               }}
               className="space-y-4"
             >
-          {/* Identification Tab */}
+          {/* Identification Step */}
           {activeTab === 'identification' && (
             <div className="mb-4">
               <label className="block mb-1 text-sm font-medium text-gray-700">
@@ -312,7 +370,7 @@ const isCurrentTabValid = () => {
             </div>
           )}
 
-          {/* Employee Tab */}
+          {/* Employee Step */}
           {activeTab === 'employee' && (
             <>
               <div>
@@ -466,158 +524,180 @@ const isCurrentTabValid = () => {
             </>
           )}
 
-          {/* Itinerary Tab */}
-            {activeTab === 'itinerary' && (
-              <div>
-                {itineraryList.map((entry, index) => (
-                  <div key={index} className="mb-4 border p-4 rounded">
-                    <h4 className="font-medium text-sm mb-2">Itinerary #{index + 1}</h4>
+          {/* Itinerary Step */}
+          {activeTab === 'itinerary' && (
+            <div>
+              {itineraryList.map((entry, index) => (
+                <div key={index} className="mb-4 border p-4 rounded">
+                  <h4 className="font-medium text-sm mb-2">Itinerary #{index + 1}</h4>
 
-                    {/* Date */}
-                    <div className="mb-2">
-                      <label className="block text-sm font-medium text-gray-700">Date</label>
-                      <input
-                        type="date"
-                        name="itinerary_date"
-                        value={entry.itinerary_date}
-                        onChange={(e) => handleItineraryChange(index, e)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
-                      />
-                    </div>
-
-                    {/* Departure Time */}
-                    <div className="mb-2">
-                      <label className="block text-sm font-medium text-gray-700">Departure Time</label>
-                      <input
-                        type="time"
-                        name="departure_time"
-                        value={entry.departure_time}
-                        onChange={(e) => handleItineraryChange(index, e)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
-                      />
-                    </div>
-
-                    {/* Arrival Time */}
-                    <div className="mb-2">
-                      <label className="block text-sm font-medium text-gray-700">Arrival Time</label>
-                      <input
-                        type="time"
-                        name="arrival_time"
-                        value={entry.arrival_time}
-                        onChange={(e) => handleItineraryChange(index, e)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
-                      />
-                    </div>
-
-                    {/* 🚗 Means of Transportation */}
-                    <div className="mb-2">
-                      <label className="block text-sm font-medium text-gray-700">Means of Transportation</label>
-                      <select
-                        name="transportation"
-                        value={entry.transportation || ''}
-                        onChange={(e) => handleItineraryChange(index, e)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
-                        required
-                      >
-                        <option value="">-- Select Transportation --</option>
-                        {transportationList.map((transportation) => (
-                          <option key={transportation.id} value={transportation.id}>
-                            {transportation.means_of_transportation}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Transportation Allowance */}
-                    <div className="mb-2">
-                      <label className="block text-sm font-medium text-gray-700">Transportation Allowance</label>
-                      <input
-                        type="number"
-                        name="transportation_allowance"
-                        value={entry.transportation_allowance}
-                        onChange={(e) => handleItineraryChange(index, e)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
-                      />
-                    </div>
-
-                    {/* Per Diem */}
-                    <div className="mb-2">
-                      <label className="block text-sm font-medium text-gray-700">Per Diem</label>
-                      <input
-                        type="number"
-                        name="per_diem"
-                        value={entry.per_diem}
-                        onChange={(e) => handleItineraryChange(index, e)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
-                      />
-                    </div>
-
-                    {/* Other Expense */}
-                    <div className="mb-2">
-                      <label className="block text-sm font-medium text-gray-700">Other Expense</label>
-                      <input
-                        type="number"
-                        name="other_expense"
-                        value={entry.other_expense}
-                        onChange={(e) => handleItineraryChange(index, e)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded"
-                      />
-                    </div>
-
-                    {/* Total Amount */}
-                    <div className="mb-2">
-                      <label className="block text-sm font-medium text-gray-700">Total Amount</label>
-                      <input
-                        type="number"
-                        name="total_amount"
-                        value={entry.total_amount}
-                        readOnly
-                        className="w-full px-2 py-1 border border-gray-300 rounded bg-gray-100"
-                      />
-                    </div>
-
-                    {itineraryList.length > 1 && (
-                      <button
-                        onClick={() => removeItinerary(index)}
-                        type="button"
-                        className="text-red-500 text-sm mt-1"
-                      >
-                        Remove
-                      </button>
-                    )}
+                  {/* Date */}
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium text-gray-700">Date</label>
+                    <input
+                      type="date"
+                      name="itinerary_date"
+                      value={entry.itinerary_date}
+                      onChange={(e) => handleItineraryChange(index, e)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                    />
                   </div>
-                ))}
 
-                <button
-                  onClick={addItinerary}
-                  type="button"
-                  className="text-blue-600 text-sm mt-2"
-                >
-                  + Add Itinerary
-                </button>
-              </div>
-            )}
+                  {/* Departure Time */}
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium text-gray-700">Departure Time</label>
+                    <input
+                      type="time"
+                      name="departure_time"
+                      value={entry.departure_time}
+                      onChange={(e) => handleItineraryChange(index, e)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                    />
+                  </div>
 
+                  {/* Arrival Time */}
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium text-gray-700">Arrival Time</label>
+                    <input
+                      type="time"
+                      name="arrival_time"
+                      value={entry.arrival_time}
+                      onChange={(e) => handleItineraryChange(index, e)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                    />
+                  </div>
 
-          {/* Validation Tab */}
+                  {/* 🚗 Means of Transportation */}
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium text-gray-700">Means of Transportation</label>
+                    <select
+                      name="transportation"
+                      value={entry.transportation || ''}
+                      onChange={(e) => handleItineraryChange(index, e)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                      required
+                    >
+                      <option value="">-- Select Transportation --</option>
+                      {transportationList.map((transportation) => (
+                        <option key={transportation.id} value={transportation.id}>
+                          {transportation.means_of_transportation}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Transportation Allowance */}
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium text-gray-700">Transportation Allowance</label>
+                    <input
+                      type="number"
+                      name="transportation_allowance"
+                      value={entry.transportation_allowance}
+                      onChange={(e) => handleItineraryChange(index, e)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                    />
+                  </div>
+
+                  {/* Per Diem */}
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium text-gray-700">Per Diem</label>
+                    <input
+                      type="number"
+                      name="per_diem"
+                      value={entry.per_diem}
+                      onChange={(e) => handleItineraryChange(index, e)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                    />
+                  </div>
+
+                  {/* Other Expense */}
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium text-gray-700">Other Expense</label>
+                    <input
+                      type="number"
+                      name="other_expense"
+                      value={entry.other_expense}
+                      onChange={(e) => handleItineraryChange(index, e)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                    />
+                  </div>
+
+                  {/* Total Amount */}
+                  <div className="mb-2">
+                    <label className="block text-sm font-medium text-gray-700">Total Amount</label>
+                    <input
+                      type="number"
+                      name="total_amount"
+                      value={entry.total_amount}
+                      readOnly
+                      className="w-full px-2 py-1 border border-gray-300 rounded bg-gray-100"
+                    />
+                  </div>
+
+                  {itineraryList.length > 1 && (
+                    <button
+                      onClick={() => removeItinerary(index)}
+                      type="button"
+                      className="text-red-500 text-sm mt-1"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              <button
+                onClick={addItinerary}
+                type="button"
+                className="text-blue-600 text-sm mt-2"
+              >
+                + Add Itinerary
+              </button>
+            </div>
+          )}
+
+          {/* Validation Step */}
           {activeTab === 'validation' && (
-            <div className="mb-4">
-              <label className="block mb-1 text-sm font-medium text-gray-700">Prepared By</label>
+            <>
+              <div className="mb-4">
+                <label className="block mb-1 text-sm font-medium text-gray-700">Prepared By</label>
+                <select
+                  name="prepared_by"
+                  value={formData.prepared_by}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                >
+                  <option value="">-- Select Employee --</option>
+                  {employeeList.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.first_name} {emp.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-4">
+              <label className="block mb-1 text-sm font-medium text-gray-700">
+                Employee Position
+              </label>
               <select
-                name="prepared_by"
-                value={formData.prepared_by}
+                name="employee_position"
+                value={formData.employee_position || ''}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded"
+                required
               >
-                <option value="">-- Select Employee --</option>
-                {employeeList.map(emp => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.first_name} {emp.last_name}
+                <option value="">-- Select Position --</option>
+                {employeePositions.map((pos) => (
+                  <option key={pos.id} value={pos.id}>
+                    {pos.position_name}
                   </option>
                 ))}
               </select>
             </div>
-                      )}
+            </>
+          )}
+
 
           <div className="flex justify-between items-center pt-4 border-t">
             <button type="button" onClick={onClose} className="text-sm text-gray-600 hover:text-gray-800">

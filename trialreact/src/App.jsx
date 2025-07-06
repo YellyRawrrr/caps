@@ -16,6 +16,10 @@ import Liquidation from './pages/Liquidation';
 import UserManagement from './pages/AdminPage/UserManagement';
 import EmployeeTravel from './pages/AdminPage/EmployeeTravel';
 import AdminSettings from './pages/AdminPage/AdminSettings';
+import AdminDashboard from './pages/Dashboards/AdminDashboard';
+import DirectorDashboard from './pages/Dashboards/DirectorDashboard';
+import HeadDashboard from './pages/Dashboards/HeadDashboard';
+import EmployeeDashboard from './pages/Dashboards/EmployeeDashboard';
 
 
 function App() {
@@ -28,7 +32,28 @@ function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+
+
+        <Route path="/admin-dashboard" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/director-dashboard" element={
+          <ProtectedRoute allowedRoles={['director']}>
+            <DirectorDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/head-dashboard" element={
+          <ProtectedRoute allowedRoles={['head',]}>
+            <HeadDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/employee-dashboard" element={
+          <ProtectedRoute allowedRoles={['employee']}>
+            <EmployeeDashboard />
+          </ProtectedRoute>
+        } />
 
         {/* Employee or Head */}
         <Route path="/travel-order" element={

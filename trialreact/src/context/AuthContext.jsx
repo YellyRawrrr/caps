@@ -46,16 +46,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ✅ Login function
-  const login = async (username, password) => {
-    try {
-      await axios.post('/login/', { username, password });
-      await checkAuth();
-      navigate('/dashboard');
-    } catch (err) {
-      alert('Login failed');
+const login = async (username, password) => {
+  try {
+    await axios.post('/login/', { username, password });
+    await checkAuth();
+    // After checkAuth, user state is updated
+    const userInfo = await fetchUser();
+    setUser(userInfo);
+
+    // Redirect based on user_level
+    if (userInfo.user_level === 'admin') {
+      navigate('/admin-dashboard');
+    } else if (userInfo.user_level === 'director') {
+      navigate('/director-dashboard'); // or another route for heads/directors
+    }else if (userInfo.user_level === 'head') {
+      navigate('/head-dashboard'); // or another route for heads/directors
+    } else if (userInfo.user_level === 'employee') {
+      navigate('/employee-dashboard'); // or another route for employees
+    } else {
+      navigate('/dashboard'); // fallback
     }
-  };
+  } catch (err) {
+    alert('Login failed');
+  }
+};
 
   
   const logout = async () => {

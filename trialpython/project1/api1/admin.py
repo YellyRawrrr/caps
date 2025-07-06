@@ -5,9 +5,9 @@ from .models import CustomUser, TravelOrder, Signature, Fund, Transportation
 
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
-    list_display = ['username', 'email', 'user_level', 'employee_type', 'is_staff', 'is_active']
+    list_display = ['username', 'email', 'user_level', 'employee_type', 'employee_position', 'is_staff', 'is_active']
     fieldsets = UserAdmin.fieldsets + (
-        ('User Info', {'fields': ('user_level', 'employee_type')}),
+        ('User Info', {'fields': ('user_level', 'employee_type', 'employee_position')}),
     )
 
 class TravelOrderAdmin(admin.ModelAdmin):
