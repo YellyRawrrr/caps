@@ -4,6 +4,9 @@ import axios from '../../api/axios';
 
 const EmployeeTravel = () => {
     const [orders, setOrders] = useState([]);
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const ordersPerPage = 6;
     
       const fetchOrders = async () => {
         try {
@@ -18,6 +21,15 @@ const EmployeeTravel = () => {
         fetchOrders();
       }, []);
     
+    // Pagination logic
+    const totalPages = Math.ceil(orders.length / ordersPerPage);
+    const paginatedOrders = orders.slice((currentPage - 1) * ordersPerPage, currentPage * ordersPerPage);
+    const goToPage = (page) => setCurrentPage(page);
+
+    // Dummy handleViewOrder for now (should be implemented as needed)
+    const handleViewOrder = (order) => {
+      // Implement navigation or modal as needed
+    };
     
   return (
     <Layout>
@@ -41,8 +53,8 @@ const EmployeeTravel = () => {
               </tr>
             </thead>
             <tbody>
-              {orders.length > 0 ? (
-                orders.map((order) => (
+              {paginatedOrders.length > 0 ? (
+                paginatedOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50">
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.destination}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.purpose}</td>
@@ -60,11 +72,10 @@ const EmployeeTravel = () => {
                       >
                         {order.status}
                       </span>
-
                     </td>      
                     <td className="px-6 py-4 text-sm text-gray-800 border-b text-right">
                       <button
-                        onClick={() => handleViewOrder(user)}
+                        onClick={() => handleViewOrder(order)}
                         className="bg-white text-blue-800 border border-blue-800 px-4 py-1.5 rounded-md hover:bg-blue-800 hover:text-white transition"
                       >
                         View
@@ -81,6 +92,34 @@ const EmployeeTravel = () => {
               )}
             </tbody>
           </table>
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-end items-center gap-2 px-6 py-4">
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+              >
+                Prev
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => goToPage(page)}
+                  className={`px-3 py-1 rounded border text-sm ${page === currentPage ? 'bg-blue-800 text-white border-blue-800' : 'bg-white text-blue-800 border-blue-200 hover:bg-blue-50'}`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </Layout>

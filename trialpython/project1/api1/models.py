@@ -7,6 +7,7 @@ from django.contrib.auth.models import AbstractUser
 
 class EmployeePosition(models.Model):
     position_name = models.CharField(max_length=100)
+    is_archived = models.BooleanField(default=False)
 
     def __str__(self):
         return self.position_name
@@ -16,7 +17,9 @@ USER_LEVEL_CHOICES = [
     ('employee', 'Employee'),
     ('head', 'Head'),
     ('admin', 'Admin'),
-    ('director', 'Director')
+    ('director', 'Director'),
+    ('bookkeeper', 'bookkeeper'),
+    ('accountant', 'accountant'),
 ]
 
 EMPLOYEE_TYPE_CHOICES = [
@@ -31,6 +34,7 @@ class CustomUser(AbstractUser):
     user_level = models.CharField(max_length=20, choices=USER_LEVEL_CHOICES)
     employee_type = models.CharField(max_length=20, choices=EMPLOYEE_TYPE_CHOICES, blank=True, null=True)
     employee_position = models.ForeignKey(EmployeePosition, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
+    
 
     @property
     def full_name(self):
@@ -39,9 +43,11 @@ class CustomUser(AbstractUser):
 # --- FUND ---
 class Fund(models.Model):
     source_of_fund = models.CharField(max_length=50)
-    
+    is_archived = models.BooleanField(default=False)
+
     def __str__(self):
         return self.source_of_fund
+
 
 # --- TRAVEL ORDER ---
 
@@ -106,6 +112,7 @@ class TravelOrder(models.Model):
     
 class Transportation(models.Model):
     means_of_transportation = models.CharField(max_length=50)
+    is_archived = models.BooleanField(default=False)
 
     def __str__(self):
         return self.means_of_transportation
@@ -132,4 +139,38 @@ class Signature(models.Model):
 
     def __str__(self):
         return f"Signed by {self.signed_by.username} for order {self.order.id}"
+    
+
+#---- Liquidation ------
+class Liquidation(models.Model):
+    travel_order = models.OneToOneField('TravelOrder', on_delete=models.CASCADE, related_name='liquidation')
+    uploaded_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='uploaded_liquidations')
+    certificate_of_travel = models.FileField(upload_to='liquidations/certificate_of_travel/')
+    certificate_of_appearance = models.FileField(upload_to='liquidations/certificate_of_appearance/')
+    after_travel_report = models.FileField(upload_to='liquidations/after_travel_report/')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    reviewed_by_bookkeeper = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookkeeper_reviews')
+    reviewed_at_bookkeeper = models.DateTimeField(null=True, blank=True)
+    bookkeeper_comment = models.TextField(blank=True)
+
+    reviewed_by_accountant = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='accountant_reviews')
+    reviewed_at_accountant = models.DateTimeField(null=True, blank=True)
+    accountant_comment = models.TextField(blank=True)
+
+    is_bookkeeper_approved = models.BooleanField(null=True)
+    is_accountant_approved = models.BooleanField(null=True)
+
+    status = models.CharField(max_length=50, default='Pending')
+
+    def update_status(self):
+        if self.is_bookkeeper_approved and self.is_accountant_approved:
+            self.status = 'Ready for Claim'
+        elif self.is_bookkeeper_approved is False or self.is_accountant_approved is False:
+            self.status = 'Rejected'
+        elif self.is_bookkeeper_approved:
+            self.status = 'Under Final Audit'
+        else:
+            self.status = 'Under Pre-Audit'
+        self.save()
     

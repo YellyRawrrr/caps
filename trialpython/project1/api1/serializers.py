@@ -1,11 +1,11 @@
 from rest_framework import serializers
-from .models import TravelOrder, Signature, CustomUser, Itinerary, Fund, Transportation, EmployeePosition
+from .models import TravelOrder, Signature, CustomUser, Itinerary, Fund, Transportation, EmployeePosition, Liquidation
 from django.contrib.auth.hashers import make_password
 
 class TransportationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transportation
-        fields = ['id', 'means_of_transportation']
+        fields = ['id', 'means_of_transportation', 'is_archived']
 
 class ItinerarySerializer(serializers.ModelSerializer):
     transportation = serializers.PrimaryKeyRelatedField( queryset=Transportation.objects.all(), allow_null=True)
@@ -19,7 +19,7 @@ class ItinerarySerializer(serializers.ModelSerializer):
 class FundSerializer(serializers.ModelSerializer):
     class Meta:
         model = Fund
-        fields = ['id', 'source_of_fund']
+        fields = ['id', 'source_of_fund', 'is_archived']
 
 class TravelOrderSerializer(serializers.ModelSerializer):
     employees = serializers.PrimaryKeyRelatedField(many=True, queryset=CustomUser.objects.all())
@@ -51,7 +51,7 @@ class TravelOrderSerializer(serializers.ModelSerializer):
 class EmployeePositionSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeePosition
-        fields = ['id', 'position_name']
+        fields = ['id', 'position_name', 'is_archived']
 
 
 
@@ -62,11 +62,43 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'password', 'user_level', 'employee_type', 'first_name', 'last_name', 'full_name', 'position']
+        fields = ['id', 'username', 'password', 'user_level', 'employee_type', 'first_name', 'last_name', 'full_name', 'position', ]
 
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}"
 
     def create(self, validated_data):
-        validated_data['password'] = make_password(validated_data['password'])
-        return super().create(validated_data)
+        password = validated_data.pop('password')
+        user = CustomUser(**validated_data)
+        user.set_password(password)  # uses Django's internal hashing system
+        user.save()
+        return user
+
+    
+class TravelOrderSimpleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TravelOrder
+        fields = ['id', 'travel_order_number']
+
+
+class LiquidationSerializer(serializers.ModelSerializer):
+    travel_order = TravelOrderSimpleSerializer(read_only=True)
+    travel_order_id = serializers.PrimaryKeyRelatedField(
+        queryset=TravelOrder.objects.all(), source='travel_order', write_only=True
+    )
+
+    # Explicit file fields for better control and frontend usability
+    certificate_of_travel = serializers.FileField(use_url=True)
+    certificate_of_appearance = serializers.FileField(use_url=True)
+    after_travel_report = serializers.FileField(use_url=True)
+
+    class Meta:
+        model = Liquidation
+        fields = '__all__'
+        read_only_fields = (
+            'uploaded_by', 'submitted_at',
+            'reviewed_by_bookkeeper', 'reviewed_at_bookkeeper',
+            'reviewed_by_accountant', 'reviewed_at_accountant'
+        )
+
+

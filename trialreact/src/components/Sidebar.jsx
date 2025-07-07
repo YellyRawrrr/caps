@@ -98,7 +98,7 @@ const Sidebar = ({ fetchOrders }) => {
                   }
                 >
                   <FaCoins size={24} />
-                  <span>Liquidation</span>
+                  <span>Liquidate</span>
                 </NavLink>
               </>
             )}
@@ -161,6 +161,21 @@ const Sidebar = ({ fetchOrders }) => {
                   <FaCog size={24} />
                   <span>Settings</span>
                 </NavLink>
+              </>
+            )}
+            {(user?.user_level === 'bookkeeper' || user?.user_level === 'accountant') && (
+              <>
+              <NavLink
+                to= "/bookkeeper-liquidation"
+                className={({ isActive }) =>
+                  `flex items-center gap-4 px-3 py-2 rounded-lg transition ${
+                    isActive ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-800 hover:text-blue-700'
+                  }`
+                }
+                >
+                  <FaCoins size={24} />
+                  <span>Liquidation</span>
+                  </NavLink> 
               </>
             )}
           </nav>

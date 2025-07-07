@@ -63,7 +63,11 @@ const login = async (username, password) => {
       navigate('/head-dashboard'); // or another route for heads/directors
     } else if (userInfo.user_level === 'employee') {
       navigate('/employee-dashboard'); // or another route for employees
-    } else {
+    } else if (userInfo.user_level === 'bookkeeper') {
+      navigate('/bookkeeper-liquidation'); // or another route for employees
+    }else if (userInfo.user_level === 'accountant') {
+      navigate('/bookkeeper-liquidation'); // or another route for employees
+    }else {
       navigate('/dashboard'); // fallback
     }
   } catch (err) {

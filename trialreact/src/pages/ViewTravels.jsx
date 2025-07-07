@@ -31,18 +31,31 @@ export default function ViewTravels() {
 
   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-base">
     <div>
+      <span className="font-medium">Mode of Filing</span> {order.mode_of_filing}
+    </div>
+    <div>
+      <span className="font-medium">Date of Filing</span> {order.date_of_filing}
+    </div>
+    <div>
+      <span className="font-medium">Fund Cluster</span> {order.fund_cluster}
+    </div>
+        <div>
+      <span className="font-medium">Employee(s)</span> {order.employee_names}
+    </div>
+    <div>
+      <span className="font-medium">Departure Date:</span> {order.date_travel_from}
+    </div>
+    <div>
+      <span className="font-medium">Return Date:</span> {order.date_travel_to}
+    </div>
+    
+    <div>
       <span className="font-medium">Destination:</span> {order.destination}
     </div>
     <div>
       <span className="font-medium">Purpose:</span> {order.purpose}
     </div>
-    <div>
-      <span className="font-medium">Departure Date:</span> {order.departure_date}
-    </div>
-    <div>
-      <span className="font-medium">Return Date:</span> {order.return_date}
-    </div>
-    <div>
+        <div>
       <span className="font-medium">Status:</span> {order.status}
     </div>
     {order.rejection_comment && (

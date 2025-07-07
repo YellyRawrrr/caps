@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import axios from '../api/axios';
 import toast from 'react-hot-toast';
 
@@ -48,6 +48,15 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
   const [employeeList, setEmployeeList] = useState([]);
   const [selectedEmployees, setSelectedEmployees] = useState([null]);
   const [currentUserId, setCurrentUserId] = useState(null);
+
+  // Autocomplete state for employee selection
+  const [employeeSearch, setEmployeeSearch] = useState([]); // array of search strings per employee
+  const [showDropdown, setShowDropdown] = useState([]); // array of booleans per employee
+  const inputRefs = useRef([]);
+  // Autocomplete state for prepared_by
+  const [preparedBySearch, setPreparedBySearch] = useState('');
+  const [showPreparedByDropdown, setShowPreparedByDropdown] = useState(false);
+  const preparedByInputRef = useRef(null);
 
   const getFutureDate = (days) => {
     const date = new Date();
@@ -178,6 +187,14 @@ useEffect(() => {
     );
   };
 
+  // Helper for filtering employees for autocomplete
+  const filteredEmployeeOptions = (index, searchList, optionsList) => {
+    const search = (searchList[index] || '').toLowerCase();
+    return optionsList.filter(
+      (opt) => `${opt.first_name} ${opt.last_name}`.toLowerCase().includes(search)
+    );
+  };
+
   const handleItineraryChange = (index, e) => {
     const { name, value } = e.target;
     const updated = [...itineraryList];
@@ -302,7 +319,7 @@ const isCurrentTabValid = () => {
 
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-xl relative overflow-y-auto max-h-[90vh]">
         <button
           onClick={onClose}
@@ -320,8 +337,8 @@ const isCurrentTabValid = () => {
             <div key={tab} className="flex-1 flex flex-col items-center">
               <div
                 className={`w-8 h-8 flex items-center justify-center rounded-full border-2 text-sm font-bold mb-1
-                  ${activeTab === tab ? 'border-blue-600 bg-blue-600 text-white' :
-                    idx < tabs.indexOf(activeTab) ? 'border-green-500 bg-green-500 text-white' :
+                  ${activeTab === tab ? 'border-blue-800 bg-white-600 text-blue' :
+                    idx < tabs.indexOf(activeTab) ? 'border-blue-800 bg-blue-800 text-white' :
                     'border-gray-300 bg-white text-gray-500'}
                 `}
               >
@@ -414,21 +431,77 @@ const isCurrentTabValid = () => {
                 Employee(s)
               </label>
               {selectedEmployees.map((emp, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <select
-                    value={emp || ''}
-                    onChange={(e) =>
-                      handleEmployeeChange(index, e.target.value)
-                    }
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded"
-                  >
-                    <option value="">-- Select Employee --</option>
-                    {availableOptions(index).map((opt) => (
-                      <option key={opt.id} value={opt.id}>
-                        {opt.first_name} {opt.last_name}
-                      </option>
-                    ))}
-                  </select>
+                <div key={index} className="flex gap-2 mb-2 relative">
+                  <div className="flex-1">
+                    <input
+                      ref={el => inputRefs.current[index] = el}
+                      type="text"
+                      value={
+                        emp
+                          ? (() => {
+                              const found = employeeList.find(e => e.id?.toString() === emp);
+                              return found ? `${found.first_name} ${found.last_name}` : '';
+                            })()
+                          : (employeeSearch[index] || '')
+                      }
+                      onChange={e => {
+                        const val = e.target.value;
+                        setEmployeeSearch(prev => {
+                          const arr = [...prev];
+                          arr[index] = val;
+                          return arr;
+                        });
+                        setShowDropdown(prev => {
+                          const arr = [...prev];
+                          arr[index] = true;
+                          return arr;
+                        });
+                        // Clear selection if user types
+                        handleEmployeeChange(index, '');
+                      }}
+                      onFocus={() => setShowDropdown(prev => {
+                        const arr = [...prev];
+                        arr[index] = true;
+                        return arr;
+                      })}
+                      onBlur={() => setTimeout(() => setShowDropdown(prev => {
+                        const arr = [...prev];
+                        arr[index] = false;
+                        return arr;
+                      }), 150)}
+                      placeholder="-- Select Employee --"
+                      className="w-full px-3 py-2 border border-gray-300 rounded"
+                    />
+                    {showDropdown[index] && filteredEmployeeOptions(index, employeeSearch, availableOptions(index)).length > 0 && (
+                      <ul className="absolute z-10 bg-white border border-gray-300 rounded shadow w-full mt-1 max-h-40 overflow-y-auto">
+                        {filteredEmployeeOptions(index, employeeSearch, availableOptions(index)).map(opt => (
+                          <li
+                            key={opt.id}
+                            className="px-3 py-2 hover:bg-blue-100 cursor-pointer"
+                            onMouseDown={() => {
+                              handleEmployeeChange(index, opt.id.toString());
+                              setEmployeeSearch(prev => {
+                                const arr = [...prev];
+                                arr[index] = `${opt.first_name} ${opt.last_name}`;
+                                return arr;
+                              });
+                              setShowDropdown(prev => {
+                                const arr = [...prev];
+                                arr[index] = false;
+                                return arr;
+                              });
+                              // Focus next input if adding
+                              if (index === selectedEmployees.length - 1 && inputRefs.current[index + 1]) {
+                                inputRefs.current[index + 1].focus();
+                              }
+                            }}
+                          >
+                            {opt.first_name} {opt.last_name}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                   {selectedEmployees.length > 1 && (
                     <button
                       type="button"
@@ -659,23 +732,44 @@ const isCurrentTabValid = () => {
           {/* Validation Step */}
           {activeTab === 'validation' && (
             <>
-              <div className="mb-4">
+              <div className="mb-4 relative">
                 <label className="block mb-1 text-sm font-medium text-gray-700">Prepared By</label>
-                <select
-                  name="prepared_by"
-                  value={formData.prepared_by}
-                  onChange={handleChange}
+                <input
+                  ref={preparedByInputRef}
+                  type="text"
+                  value={(() => {
+                    const found = employeeList.find(e => e.id?.toString() === formData.prepared_by);
+                    return found ? `${found.first_name} ${found.last_name}` : preparedBySearch;
+                  })()}
+                  onChange={e => {
+                    setPreparedBySearch(e.target.value);
+                    setShowPreparedByDropdown(true);
+                    // Clear selection if user types
+                    setFormData(prev => ({ ...prev, prepared_by: '' }));
+                  }}
+                  onFocus={() => setShowPreparedByDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowPreparedByDropdown(false), 150)}
+                  placeholder="-- Select Employee --"
                   className="w-full px-3 py-2 border border-gray-300 rounded"
-                >
-                  <option value="">-- Select Employee --</option>
-                  {employeeList.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.first_name} {emp.last_name}
-                    </option>
-                  ))}
-                </select>
+                />
+                {showPreparedByDropdown && filteredEmployeeOptions(0, [preparedBySearch], employeeList).length > 0 && (
+                  <ul className="absolute z-10 bg-white border border-gray-300 rounded shadow w-full mt-1 max-h-40 overflow-y-auto">
+                    {filteredEmployeeOptions(0, [preparedBySearch], employeeList).map(opt => (
+                      <li
+                        key={opt.id}
+                        className="px-3 py-2 hover:bg-blue-100 cursor-pointer"
+                        onMouseDown={() => {
+                          setFormData(prev => ({ ...prev, prepared_by: opt.id.toString() }));
+                          setPreparedBySearch(`${opt.first_name} ${opt.last_name}`);
+                          setShowPreparedByDropdown(false);
+                        }}
+                      >
+                        {opt.first_name} {opt.last_name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-
               <div className="mb-4">
               <label className="block mb-1 text-sm font-medium text-gray-700">
                 Employee Position

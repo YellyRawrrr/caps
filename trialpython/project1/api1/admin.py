@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.html import mark_safe
-from .models import CustomUser, TravelOrder, Signature, Fund, Transportation
+from .models import CustomUser, TravelOrder, Signature, Fund, Transportation, EmployeePosition
 
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
@@ -19,8 +19,26 @@ class TravelOrderAdmin(admin.ModelAdmin):
             return mark_safe(f'<img src="{obj.evidence.url}" width="200" />')
         return "No evidence uploaded"
 
+@admin.register(Fund)
+class FundAdmin(admin.ModelAdmin):
+    list_display = ['source_of_fund', 'is_archived']
+    list_filter = ['is_archived']
+    search_fields = ['source_of_fund']
+
+@admin.register(Transportation)
+class TransportationAdmin(admin.ModelAdmin):
+    list_display = ['means_of_transportation', 'is_archived']
+    list_filter = ['is_archived']
+    search_fields = ['means_of_transportation']
+
+@admin.register(EmployeePosition)
+class EmployeePositionAdmin(admin.ModelAdmin):
+    list_display = ['position_name', 'is_archived']
+    list_filter = ['is_archived']
+    search_fields = ['position_name']
+
 admin.site.register(CustomUser, CustomUserAdmin)
-admin.site.register(Fund)
-admin.site.register(Transportation)
+
+
 admin.site.register(TravelOrder, TravelOrderAdmin)
 admin.site.register(Signature)

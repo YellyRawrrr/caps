@@ -10,6 +10,9 @@ const UserManagement = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const usersPerPage = 6;
 
   const fetchUsers = async () => {
     try {
@@ -24,7 +27,10 @@ const UserManagement = () => {
     fetchUsers();
   }, []);
 
-
+  // Pagination logic
+  const totalPages = Math.ceil(users.length / usersPerPage);
+  const paginatedUsers = users.slice((currentPage - 1) * usersPerPage, currentPage * usersPerPage);
+  const goToPage = (page) => setCurrentPage(page);
 
   const openAddModal = () => setIsAddModalOpen(true);
     const closeAddModal = () => {
@@ -74,8 +80,8 @@ const UserManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {users.length > 0 ? (
-                users.map((user) => (
+              {paginatedUsers.length > 0 ? (
+                paginatedUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm text-gray-800 border-b">{user.first_name}</td>
                     <td className="px-6 py-4 text-sm text-gray-800 border-b">{user.last_name}</td>
@@ -101,6 +107,34 @@ const UserManagement = () => {
               )}
             </tbody>
           </table>
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-end items-center gap-2 px-6 py-4">
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+              >
+                Prev
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => goToPage(page)}
+                  className={`px-3 py-1 rounded border text-sm ${page === currentPage ? 'bg-blue-800 text-white border-blue-800' : 'bg-white text-blue-800 border-blue-200 hover:bg-blue-50'}`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </Layout>

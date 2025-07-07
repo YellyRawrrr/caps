@@ -6,6 +6,8 @@ from .views import (
     FundListCreateView, TransportationCreateView,AdminTravelView,
     FundDetailView,TransportationDetailView, EmployeeDetailUpdateView,
     EmployeePositionCreateView,EmployeePositionDetailView,
+    SubmitLiquidationView, BookkeeperReviewView, AccountantReviewView, LiquidationListView,
+    EmployeeLiquiationView, LiquidationDetailView,
     login_view, logout_view,
     refresh_token_view, protected_view
 )
@@ -36,6 +38,14 @@ urlpatterns = [
     path('transportation/<int:pk>/', TransportationDetailView.as_view(), name='transportation-detail'),
     path('employee-position/', EmployeePositionCreateView.as_view(), name='employee-position'),
     path('employee-position/<int:pk>/', EmployeePositionDetailView.as_view(), name='fund-detail'),
+
+    #liquidation
+    path('liquidation/<int:pk>/submit/', SubmitLiquidationView.as_view(), name='submit-liquidation'),
+    path('liquidation/<int:pk>/bookkeeper-review/', BookkeeperReviewView.as_view(), name='bookkeeper-review'),
+    path('liquidation/<int:pk>/accountant-review/', AccountantReviewView.as_view(), name='accountant-review'),
+    path('liquidations/', LiquidationListView.as_view(), name='liquidation-list'),
+    path('employee-liquidation/', EmployeeLiquiationView.as_view(), name='employee-liquidation'),
+    path('liquidations/<int:pk>/', LiquidationDetailView.as_view(), name='liquidation-detail'),
 
 
 

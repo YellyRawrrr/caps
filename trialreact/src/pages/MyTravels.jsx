@@ -6,6 +6,9 @@ import Layout from '../components/Layout';
 export default function MyTravels() {
   const [orders, setOrders] = useState([]);
   const navigate = useNavigate();
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 6;
 
   const fetchOrders = async () => {
     try {
@@ -20,8 +23,13 @@ export default function MyTravels() {
     fetchOrders();
   }, []);
 
+  // Pagination logic
+  const totalPages = Math.ceil(orders.length / ordersPerPage);
+  const paginatedOrders = orders.slice((currentPage - 1) * ordersPerPage, currentPage * ordersPerPage);
+  const goToPage = (page) => setCurrentPage(page);
+
   const handleViewOrder = (order) => {
-    navigate(`/travel-order/view/${order.id}`, { state: { order } });
+    navigate(`/travel-order/view/${order.id}`);
   };
 
   return (
@@ -61,8 +69,8 @@ export default function MyTravels() {
               </tr>
             </thead>
             <tbody>
-              {orders.length > 0 ? (
-                orders.map((order) => (
+              {paginatedOrders.length > 0 ? (
+                paginatedOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-100">
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.travel_order_number}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.destination}</td>
@@ -102,6 +110,34 @@ export default function MyTravels() {
               )}
             </tbody>
           </table>
+          {/* Pagination Controls */}
+{totalPages > 1 && (
+  <div className="flex justify-end items-center gap-2 px-6 py-4">
+    <button
+      onClick={() => goToPage(currentPage - 1)}
+      disabled={currentPage === 1}
+      className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+    >
+      Prev
+    </button>
+    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+      <button
+        key={page}
+        onClick={() => goToPage(page)}
+        className={`px-3 py-1 rounded border text-sm ${page === currentPage ? 'bg-blue-800 text-white border-blue-800' : 'bg-white text-blue-800 border-blue-200 hover:bg-blue-50'}`}
+      >
+        {page}
+      </button>
+    ))}
+    <button
+      onClick={() => goToPage(currentPage + 1)}
+      disabled={currentPage === totalPages}
+      className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+    >
+      Next
+    </button>
+  </div>
+)}
         </div>
       </div>
       </div>

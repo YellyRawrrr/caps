@@ -3,9 +3,10 @@ from rest_framework.response import Response
 from rest_framework import status, permissions
 from django.shortcuts import get_object_or_404
 import json
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
-from .models import TravelOrder, Signature, CustomUser, Fund, Transportation, EmployeePosition
-from .serializers import TravelOrderSerializer, UserSerializer, FundSerializer, TransportationSerializer, EmployeePositionSerializer
+from .models import TravelOrder, Signature, CustomUser, Fund, Transportation, EmployeePosition, Liquidation
+from .serializers import TravelOrderSerializer, UserSerializer, FundSerializer, TransportationSerializer, EmployeePositionSerializer, LiquidationSerializer
 from .utils import get_approval_chain, get_next_head
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
@@ -131,7 +132,11 @@ class TravelOrderCreateView(APIView):
     
 class FundListCreateView(APIView):
     def get(self, request):
-        funds = Fund.objects.all().order_by('-id')
+        include_archived = request.query_params.get('include_archived') == 'true'
+        if include_archived:
+            funds = Fund.objects.all().order_by('-id')
+        else:
+            funds = Fund.objects.filter(is_archived=False).order_by('-id')
         serializer = FundSerializer(funds, many=True)
         return Response(serializer.data)
 
@@ -142,19 +147,24 @@ class FundListCreateView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class FundDetailView(APIView):
-    def put(self, request, pk):
+    def patch(self, request, pk):
         fund = get_object_or_404(Fund, pk=pk)
-        serializer = FundSerializer(fund, data=request.data)
+        serializer = FundSerializer(fund, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class TransportationCreateView(APIView):
     def get(self, request):
-        transportation = Transportation.objects.all().order_by('-id')
-        serializer = TransportationSerializer(transportation, many=True)
+        include_archived = request.query_params.get('include_archived') == 'true'
+        qs = Transportation.objects.all().order_by('-id')
+        if not include_archived:
+            qs = qs.filter(is_archived=False)
+        serializer = TransportationSerializer(qs, many=True)
         return Response(serializer.data)
 
     def post(self, request):
@@ -172,11 +182,23 @@ class TransportationDetailView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        transportation = get_object_or_404(Transportation, pk=pk)
+        serializer = TransportationSerializer(transportation, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     
 class EmployeePositionCreateView(APIView):
     def get(self, request):
-        emp_position = EmployeePosition.objects.all().order_by('-id')
-        serializer = EmployeePositionSerializer(emp_position, many=True)
+        include_archived = request.query_params.get('include_archived') == 'true'
+        qs = EmployeePosition.objects.all().order_by('-id')
+        if not include_archived:
+            qs = qs.filter(is_archived=False)
+        serializer = EmployeePositionSerializer(qs, many=True)
         return Response(serializer.data)
 
     def post(self, request):
@@ -185,7 +207,7 @@ class EmployeePositionCreateView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 class EmployeePositionDetailView(APIView):
     def put(self, request, pk):
         emp_position = get_object_or_404(EmployeePosition, pk=pk)
@@ -194,6 +216,15 @@ class EmployeePositionDetailView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        emp_position = get_object_or_404(EmployeePosition, pk=pk)
+        serializer = EmployeePositionSerializer(emp_position, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 # View: MY FILED TRAVEL ORDERS
 class MyTravelOrdersView(APIView):
@@ -490,3 +521,104 @@ class AdminTravelView(APIView):
         travel = TravelOrder.objects.all().order_by('-submitted_at')
         serializer = TravelOrderSerializer(travel, many=True)
         return Response(serializer.data)
+    
+
+class SubmitLiquidationView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, pk):
+        travel_order = get_object_or_404(TravelOrder, pk=pk)
+
+        # Check if already submitted
+        if hasattr(travel_order, 'liquidation'):
+            return Response({"error": "Liquidation already submitted."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Inject travel_order ID into data
+        data = request.data.copy()
+        data['travel_order'] = travel_order.id
+
+        serializer = LiquidationSerializer(data=data)
+        if serializer.is_valid():
+            liquidation = serializer.save(uploaded_by=request.user)
+            return Response({"success": "Liquidation submitted."}, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class BookkeeperReviewView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk):
+        liquidation = get_object_or_404(Liquidation, pk=pk)
+
+        if request.user.user_level != 'bookkeeper':
+            return Response({'error': 'Unauthorized'}, status=403)
+
+        approve = request.data.get('approve')
+        comment = request.data.get('comment', '')
+
+        liquidation.is_bookkeeper_approved = approve
+        liquidation.bookkeeper_comment = comment
+        liquidation.reviewed_by_bookkeeper = request.user
+        liquidation.reviewed_at_bookkeeper = timezone.now()
+        liquidation.update_status()
+
+        return Response({'message': 'Bookkeeper review saved.'})
+
+class AccountantReviewView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk):
+        liquidation = get_object_or_404(Liquidation, pk=pk)
+
+        if request.user.user_level != 'accountant':
+            return Response({'error': 'Unauthorized'}, status=403)
+
+        approve = request.data.get('approve')
+        comment = request.data.get('comment', '')
+
+        liquidation.is_accountant_approved = approve
+        liquidation.accountant_comment = comment
+        liquidation.reviewed_by_accountant = request.user
+        liquidation.reviewed_at_accountant = timezone.now()
+        liquidation.update_status()
+
+        return Response({'message': 'Accountant review saved.'})
+    
+class LiquidationListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        liquidations = Liquidation.objects.select_related('travel_order').all().order_by('-id')
+        serializer = LiquidationSerializer(liquidations, many=True)
+        return Response(serializer.data)
+    
+
+class EmployeeLiquiationView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if user.user_level == 'admin':
+            orders = TravelOrder.objects.filter(status="The travel order has been approved by the Regional Director")
+        else:
+            orders = TravelOrder.objects.filter(
+                employees=user,
+                status="The travel order has been approved by the Regional Director"
+            )
+
+        orders = orders.order_by('-submitted_at').distinct()
+        serializer = TravelOrderSerializer(orders, many=True)
+        return Response(serializer.data)
+    
+class LiquidationDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        liquidation = get_object_or_404(Liquidation, pk=pk)
+        serializer = LiquidationSerializer(liquidation)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+

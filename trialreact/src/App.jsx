@@ -12,7 +12,7 @@ import ViewTravels from './pages/ViewTravels';
 import HeadApprovalDetails from './pages/HeadApprovalDetails';
 import ViewApproval from './components/ViewApproval';
 import Dashboard from './pages/Dashboard';
-import Liquidation from './pages/Liquidation';
+
 import UserManagement from './pages/AdminPage/UserManagement';
 import EmployeeTravel from './pages/AdminPage/EmployeeTravel';
 import AdminSettings from './pages/AdminPage/AdminSettings';
@@ -20,6 +20,10 @@ import AdminDashboard from './pages/Dashboards/AdminDashboard';
 import DirectorDashboard from './pages/Dashboards/DirectorDashboard';
 import HeadDashboard from './pages/Dashboards/HeadDashboard';
 import EmployeeDashboard from './pages/Dashboards/EmployeeDashboard';
+import LiquidationForm from './pages/LiquidationForm';
+import LiquidationList from './pages/LiquidationList';
+import LiquidationReview from './pages/LiquidationReview';
+import EmployeeLiquidation from './pages/EmployeeLiquidation';
 
 
 function App() {
@@ -81,17 +85,23 @@ function App() {
 
         <Route path="/liquidation" element={
           <ProtectedRoute allowedRoles={['employee', 'head']}>
-            <Liquidation />
+            <EmployeeLiquidation   />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/liquidation/view/:id" element={
+          <ProtectedRoute allowedRoles={['employee', 'head']}>
+            <LiquidationForm   />
           </ProtectedRoute>
         } />
 
 
         {/* Head */}
         <Route path="/approve" element={
-  <ProtectedRoute allowedRoles={['head', 'director']}>
-    <HeadApprovalDetails />
-  </ProtectedRoute>
-} />
+          <ProtectedRoute allowedRoles={['head', 'director']}>
+            <HeadApprovalDetails />
+          </ProtectedRoute>
+        } />
 
 
         <Route path="/head-approval/view/:id" element={
@@ -132,6 +142,18 @@ function App() {
             <AdminSettings/>
           </ProtectedRoute>
         } />
+
+        {/* Bookkeeper */}
+        <Route path="/bookkeeper-liquidation" element={
+          <ProtectedRoute allowedRoles={['bookkeeper', 'accountant']}>
+            <LiquidationList/>
+          </ProtectedRoute>
+            } />
+          <Route path="/liquidation/review/:id" element={
+            <ProtectedRoute allowedRoles={['bookkeeper', 'accountant']}>
+              <LiquidationReview />
+            </ProtectedRoute>
+          } />
       </Routes>
     </AuthProvider>
   );
