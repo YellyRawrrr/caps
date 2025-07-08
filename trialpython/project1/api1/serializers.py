@@ -100,5 +100,3 @@ class LiquidationSerializer(serializers.ModelSerializer):
             'reviewed_by_bookkeeper', 'reviewed_at_bookkeeper',
             'reviewed_by_accountant', 'reviewed_at_accountant'
         )
-
-

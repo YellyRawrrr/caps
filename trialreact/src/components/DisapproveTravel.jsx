@@ -34,7 +34,7 @@ export default function DisapproveTravel({ isOpen, onClose, fetchOrders, id }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center">
       <div className="bg-white w-[90%] sm:w-[80%] md:w-[60%] lg:w-[50%] p-6 space-y-6 relative border border-gray-200">
 
         {/* Close Button */}
@@ -57,7 +57,7 @@ export default function DisapproveTravel({ isOpen, onClose, fetchOrders, id }) {
           </label>
           <textarea
             rows="4"
-            className="w-full border border-gray-300 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="w-full border border-gray-300 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Enter the reason for rejecting this travel order..."

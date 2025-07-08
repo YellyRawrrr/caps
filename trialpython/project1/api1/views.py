@@ -5,8 +5,8 @@ from django.shortcuts import get_object_or_404
 import json
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
-from .models import TravelOrder, Signature, CustomUser, Fund, Transportation, EmployeePosition, Liquidation
-from .serializers import TravelOrderSerializer, UserSerializer, FundSerializer, TransportationSerializer, EmployeePositionSerializer, LiquidationSerializer
+from .models import TravelOrder, Signature, CustomUser, Fund, Transportation, EmployeePosition, Liquidation, EmployeeSignature, Itinerary
+from .serializers import TravelOrderSerializer, UserSerializer, FundSerializer, TransportationSerializer, EmployeePositionSerializer, LiquidationSerializer, ItinerarySerializer
 from .utils import get_approval_chain, get_next_head
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
@@ -89,6 +89,8 @@ def protected_view(request):
     })
 
 
+
+
 class TravelOrderCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -125,10 +127,26 @@ class TravelOrderCreateView(APIView):
             travel_order = serializer.save(prepared_by=user)
             travel_order.number_of_employees = travel_order.employees.count()
             travel_order.save()
+
+            signature_data = request.data.get("signature")
+
+            if signature_data:
+                EmployeeSignature.objects.update_or_create(
+                    order=travel_order,
+                    defaults={
+                        "signed_by": user,
+                        "signature_data": signature_data
+                    }
+                )
+            else:
+                print("⚠️ No signature data received. Skipping EmployeeSignature creation.")
+
+
             return Response(TravelOrderSerializer(travel_order).data, status=status.HTTP_201_CREATED)
 
         print("Validation errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     
 class FundListCreateView(APIView):
     def get(self, request):
@@ -240,6 +258,14 @@ class MyTravelOrdersView(APIView):
 
         serializer = TravelOrderSerializer(orders.distinct(), many=True)
         return Response(serializer.data)
+    
+class TravelOrderItineraryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, travel_order_id):
+        itineraries = Itinerary.objects.filter(travel_order__id=travel_order_id)
+        serializer = ItinerarySerializer(itineraries, many=True)
+        return Response(serializer.data)
 
 
 # View: APPROVALS TO REVIEW (only where current_approver is the logged-in user)
@@ -342,7 +368,7 @@ class ApproveTravelOrderView(APIView):
                 # ✅ Auto-generate travel order number
                 if not order.travel_order_number:
                     today = timezone.now().date()
-                    prefix = f"TO-{today.strftime('%Y%m%d')}-"
+                    prefix = f"R1-{today.strftime('%Y%m%d')}-"
                     last_order = TravelOrder.objects.filter(
                         travel_order_number__startswith=prefix
                     ).order_by('-travel_order_number').first()
@@ -482,15 +508,12 @@ class EmployeeListView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        data = request.data.copy()
-        if 'password' in data:
-            data['password'] = make_password(data['password'])
-
-        serializer = UserSerializer(data=data)
+        serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class EmployeeDetailUpdateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -621,4 +644,3 @@ class LiquidationDetailView(APIView):
         liquidation = get_object_or_404(Liquidation, pk=pk)
         serializer = LiquidationSerializer(liquidation)
         return Response(serializer.data, status=status.HTTP_200_OK)
-

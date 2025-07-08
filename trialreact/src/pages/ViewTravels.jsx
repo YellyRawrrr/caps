@@ -2,23 +2,38 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from '../api/axios';
 import Layout from '../components/Layout'
+import { BlobProvider } from '@react-pdf/renderer';
+import TravelOrderPDF from '../components/TravelOrderPDF';
+
+
 
 export default function ViewTravels() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
+  const [itineraries, setItineraries] = useState([]);
 
-  useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        const res = await axios.get(`/travel-orders/${id}/`);
-        setOrder(res.data);
-      } catch (err) {
-        console.error('Error fetching travel order:', err);
-      }
-    };
+useEffect(() => {
+  const fetchOrder = async () => {
+    try {
+      const res = await axios.get(`/travel-orders/${id}/`);
+      setOrder(res.data);
+    } catch (err) {
+      console.error('Error fetching travel order:', err);
+    }
+  };
 
-    fetchOrder();
-  }, [id]);
+  const fetchItineraries = async () => {
+    try {
+      const res = await axios.get(`/travel-itinerary/${id}/`);
+      setItineraries(res.data);
+    } catch (err) {
+      console.error('Error fetching itineraries:', err);
+    }
+  };
+
+  fetchOrder();
+  fetchItineraries();
+}, [id]);
 
   if (!order) return <div className="p-6">Loading...</div>;
 
@@ -28,6 +43,21 @@ export default function ViewTravels() {
   <h2 className="text-2xl font-semibold mb-6 border-b pb-2">
     Travel Order #{order.id}
   </h2>
+<BlobProvider document={<TravelOrderPDF data={{...order, itineraries}} />}>
+  {({ url, loading, error }) => (
+    <button
+      onClick={() => {
+        if (url) window.open(url, '_blank');
+      }}
+      className="mb-6 px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700"
+      disabled={loading}
+    >
+      {loading ? 'Generating PDF...' : 'Open Travel Order PDF'}
+    </button>
+  )}
+</BlobProvider>
+
+
 
   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-base">
     <div>
@@ -64,6 +94,44 @@ export default function ViewTravels() {
       </div>
     )}
   </div>
+  {itineraries.length > 0 && (
+  <div className="mt-8">
+    <h3 className="text-xl font-semibold mb-4">Itinerary of Travel</h3>
+    <div className="overflow-auto border rounded">
+      <table className="min-w-full table-auto text-sm text-left">
+        <thead className="bg-gray-200">
+          <tr>
+            <th className="px-4 py-2 border">Date</th>
+            <th className="px-4 py-2 border">Destination</th>
+            <th className="px-4 py-2 border">Departure</th>
+            <th className="px-4 py-2 border">Arrival</th>
+            <th className="px-4 py-2 border">Transportation</th>
+            <th className="px-4 py-2 border">Transpo Allowance</th>
+            <th className="px-4 py-2 border">Per Diem</th>
+            <th className="px-4 py-2 border">Other Expense</th>
+            <th className="px-4 py-2 border">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {itineraries.map((item, i) => (
+            <tr key={i} className="even:bg-gray-50">
+              <td className="px-4 py-2 border">{item.itinerary_date}</td>
+              <td className="px-4 py-2 border">{item.destination}</td>
+              <td className="px-4 py-2 border">{item.departure_time}</td>
+              <td className="px-4 py-2 border">{item.arrival_time}</td>
+              <td className="px-4 py-2 border">{item.transportation}</td>
+              <td className="px-4 py-2 border">{item.transportation_allowance}</td>
+              <td className="px-4 py-2 border">{item.per_diem}</td>
+              <td className="px-4 py-2 border">{item.other_expense}</td>
+              <td className="px-4 py-2 border">{item.total_amount}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
+
 </div>
 
 

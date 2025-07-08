@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ag-media/react-pdf-table": "^2.0.3",
+    "@react-pdf/renderer": "^4.3.0",
     "@supabase/supabase-js": "^2.50.0",
     "@tailwindcss/vite": "^4.0.14",
     "axios": "^1.8.4",

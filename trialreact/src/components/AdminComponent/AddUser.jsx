@@ -14,6 +14,26 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
   const [positionId, setPositionId] = useState(""); // new
   const [positions, setPositions] = useState([]);   // new
 
+  const employeeTypeOptions = {
+    employee: [
+      { value: 'csc', label: 'CSC' },
+      { value: 'po', label: 'PO' },
+      { value: 'tmsd', label: 'TMSD' },
+      { value: 'afsd', label: 'AFSD' },
+      { value: 'regional', label: 'Regional' },
+    ],
+    head: [
+      { value: 'csc', label: 'CSC' },
+      { value: 'po', label: 'PO' },
+      { value: 'tmsd', label: 'TMSD' },
+      { value: 'afsd', label: 'AFSD' },
+    ],
+    director: [
+      { value: 'regional', label: 'Regional' },
+    ],
+    admin: [],
+  };
+
   useEffect(() => {
     const fetchPositions = async () => {
       try {
@@ -27,6 +47,19 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
 
     fetchPositions();
   }, []);
+
+  // Reset employee type if userlevel changes to an incompatible one
+  useEffect(() => {
+    if (userlevel === 'admin' || !userlevel) {
+      setEmployeetype('');
+    } else if (userlevel === 'director' && employeetype !== 'regional') {
+      setEmployeetype('');
+    } else if (userlevel === 'head' && !['csc','po','tmsd','afsd'].includes(employeetype)) {
+      setEmployeetype('');
+    } else if (userlevel === 'employee' && !['csc','po','tmsd','afsd','regional'].includes(employeetype)) {
+      setEmployeetype('');
+    }
+  }, [userlevel, employeetype]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -126,13 +159,13 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
               value={employeetype}
               onChange={(e) => setEmployeetype(e.target.value)}
               className="w-full px-4 py-2 border rounded-md"
+              disabled={userlevel === 'admin' || !userlevel}
+              required={userlevel === 'employee' || userlevel === 'head' || userlevel === 'director'}
             >
-              <option value="">Select employee type (optional)</option>
-              <option value="csc">CSC</option>
-              <option value="po">PO</option>
-              <option value="tmsd">TMSD</option>
-              <option value="afsd">AFSD</option>
-              <option value="regional">Regional</option>
+              <option value="">{userlevel === 'admin' || !userlevel ? 'No employee type available' : 'Select employee type'}</option>
+              {(employeeTypeOptions[userlevel] || []).map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
           </div>
 

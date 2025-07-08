@@ -1,6 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import axios from '../api/axios';
 import toast from 'react-hot-toast';
+import SignatureCanvas from 'react-signature-canvas';
+
+
 
 export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
   if (!isOpen) return null;
@@ -24,7 +27,21 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
     fund_cluster: '',
     prepared_by: '',
     employee_position: '',
+    type_of_user: '',
   });
+
+  const TYPE_OF_USER_CHOICES = [
+  'Community Service Center Employee',
+  'Provincial Office Employee',
+  'Regional Office-TMSD Employee',
+  'Regional Office-AFSD Employee',
+  'Regional Office-LU Employee',
+  'CSC Head',
+  'PO Head',
+  'TMSD Chief',
+  'AFSD Chief',
+];
+
 
   const [itineraryList, setItineraryList] = useState([
     {
@@ -41,6 +58,8 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
 
   const [fundList, setFundList] = useState([]);
   const [transportationList, setTransportationList] = useState([]); // ← ADD THIS
+  const sigPadRef = useRef();
+  const [signatureData, setSignatureData] = useState(null);
   const [employeePositions, setEmployeePositions] = useState([]);
   const [preparedByPositionName, setPreparedByPositionName] = useState('');
   const [minDateFrom, setMinDateFrom] = useState('');
@@ -238,6 +257,12 @@ useEffect(() => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+let signatureBase64 = null;
+if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
+  signatureBase64 = sigPadRef.current.getCanvas().toDataURL('image/png');
+}
+
+
     const validEmployees = selectedEmployees.filter((id) => !!id);
 const payload = {
   ...formData,
@@ -254,6 +279,7 @@ const payload = {
     other_expense: parseFloat(item.other_expense) || 0,
     total_amount: parseFloat(item.total_amount) || 0,
   })),
+  signature: signatureData, // <-- include signature here
 };
 
 
@@ -789,6 +815,53 @@ const isCurrentTabValid = () => {
                 ))}
               </select>
             </div>
+            <div className="mb-4">
+            <label className="block mb-1 text-sm font-medium text-gray-700">Type of User</label>
+            <select
+              name="type_of_user"
+              value={formData.type_of_user}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded"
+              required
+            >
+              <option value="">-- Select Type of User --</option>
+              {TYPE_OF_USER_CHOICES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="mb-4">
+  <label className="block mb-1 text-sm font-medium text-gray-700">
+    Signature
+  </label>
+  <div className="border border-gray-300 rounded bg-gray-50 overflow-x-auto">
+    <SignatureCanvas
+      ref={sigPadRef}
+      canvasProps={{
+        width: 500,
+        height: 150,
+        className: 'block rounded'
+      }}
+    />
+  </div>
+  <div className="flex gap-2 mt-2">
+  <button
+    type="button"
+    onClick={() => {
+      sigPadRef.current.clear();
+      setSignatureData(null);
+    }}
+    className="bg-gray-300 px-3 py-1 rounded text-sm"
+  >
+    Clear
+  </button>
+</div>
+
+</div>
+
+
             </>
           )}
 

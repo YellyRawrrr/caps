@@ -44,7 +44,7 @@ export default function ApproveTravel({ isOpen, onClose, orderId, fetchOrders })
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm bg-black bg-opacity-50 z-50 flex items-center justify-center">
       <div className="bg-white w-[90%] sm:w-[80%] md:w-[60%] lg:w-[50%] p-6 space-y-6 relative border border-gray-200">
 
         {/* Close button */}

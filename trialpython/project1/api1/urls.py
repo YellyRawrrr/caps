@@ -7,7 +7,7 @@ from .views import (
     FundDetailView,TransportationDetailView, EmployeeDetailUpdateView,
     EmployeePositionCreateView,EmployeePositionDetailView,
     SubmitLiquidationView, BookkeeperReviewView, AccountantReviewView, LiquidationListView,
-    EmployeeLiquiationView, LiquidationDetailView,
+    EmployeeLiquiationView, LiquidationDetailView, TravelOrderItineraryView,
     login_view, logout_view,
     refresh_token_view, protected_view
 )
@@ -30,6 +30,7 @@ urlpatterns = [
     path('my-travel-orders/', MyTravelOrdersView.as_view(), name='my-travel-orders'),
     path('my-pending-approvals/', TravelOrderApprovalsView.as_view(), name='travel-order-approvals'),
     path('travel-orders/<int:pk>/', TravelOrderDetailView.as_view(), name='travel-order-detail'),
+    path('travel-itinerary/<int:travel_order_id>/', TravelOrderItineraryView.as_view(), name='travel-order-itineraries'),
 
     #travels settings
     path('funds/', FundListCreateView.as_view(), name='funds'),

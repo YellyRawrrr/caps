@@ -76,6 +76,18 @@ class TravelOrder(models.Model):
         ('07_TF','07_TF')
     ]
 
+    TYPE_OF_USER = [
+        ('Community Service Center Employee', 'Community service Center Employee'),
+        ('Provincial Office Employee', 'Provincial Office Employee'),
+        ('Regional Office-TMSD Employee','Regional Office-TMSD Employee'),
+        ('Regional Office-AFSD Employee', 'Regional Office-AFSD Employee'),
+        ('Regional Office-LU Employee', 'Regional Office-LU Employee'),
+        ('CSC Head','CSC Head'),
+        ('PO Head','PO Head'),
+        ('TMSD Chief','TMSD Chief'),
+        ('AFSD Chief','AFSD Chief'),
+    ]
+
     employees = models.ManyToManyField(CustomUser, related_name='travel_orders')
     travel_order_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
     #new
@@ -95,6 +107,7 @@ class TravelOrder(models.Model):
     #validation
     prepared_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='prepared_travel_order')
     employee_position = models.ForeignKey(EmployeePosition, on_delete=models.SET_NULL, null=True, blank=True, related_name='travel_orders')
+    type_of_user = models.CharField(max_length=100, choices=TYPE_OF_USER, blank=True, null=True)
     status = models.CharField(max_length=100, choices=STATUS_CHOICES, default='Travel order is placed')
     approval_stage = models.IntegerField(default=0)
     current_approver = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL, related_name='approving_orders')
@@ -128,9 +141,16 @@ class Itinerary(models.Model):
     other_expense = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
 
+class EmployeeSignature(models.Model):
+    order = models.OneToOneField(TravelOrder, on_delete=models.CASCADE, related_name='employee_signature')
+    signed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    signature_data = models.TextField()  # Base64
+    signed_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return f"Employee Signature by {self.signed_by.username} for order {self.order.id}"
     
-
+# -- Head Signature --
 class Signature(models.Model):
     order = models.ForeignKey(TravelOrder, on_delete=models.CASCADE)
     signed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
@@ -139,6 +159,8 @@ class Signature(models.Model):
 
     def __str__(self):
         return f"Signed by {self.signed_by.username} for order {self.order.id}"
+    
+
     
 
 #---- Liquidation ------
@@ -173,4 +195,3 @@ class Liquidation(models.Model):
         else:
             self.status = 'Under Pre-Audit'
         self.save()
-    
