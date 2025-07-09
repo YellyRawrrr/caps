@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../../components/Layout'
 import axios from '../../api/axios';
+import { useNavigate } from 'react-router-dom';
 
 const EmployeeTravel = () => {
     const [orders, setOrders] = useState([]);
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
+    const navigate = useNavigate();
     const ordersPerPage = 6;
     
       const fetchOrders = async () => {
@@ -28,7 +30,7 @@ const EmployeeTravel = () => {
 
     // Dummy handleViewOrder for now (should be implemented as needed)
     const handleViewOrder = (order) => {
-      // Implement navigation or modal as needed
+      navigate(`/travel-order/view/${order.id}`);
     };
     
   return (

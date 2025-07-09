@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import axios from '../api/axios';
 import { useNavigate } from 'react-router';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
@@ -71,7 +72,7 @@ const login = async (username, password) => {
       navigate('/dashboard'); // fallback
     }
   } catch (err) {
-    alert('Login failed');
+    toast.error('Login failed');
   }
 };
 

@@ -115,11 +115,17 @@ class TravelOrderCreateView(APIView):
             except json.JSONDecodeError:
                 return Response({'itinerary': ['Invalid itinerary format.']}, status=400)
 
+        # Parse and ensure valid employees list
         if isinstance(data.get('employees'), str):
             try:
                 data['employees'] = json.loads(data['employees'])
             except json.JSONDecodeError:
                 return Response({'employees': ['Invalid employees format.']}, status=400)
+
+        # Ensure the logged-in user is always in the employees list
+        if user.id not in data['employees']:
+            data['employees'].insert(0, user.id)
+
 
         # Validate and save
         serializer = TravelOrderSerializer(data=data)
@@ -368,7 +374,7 @@ class ApproveTravelOrderView(APIView):
                 # ✅ Auto-generate travel order number
                 if not order.travel_order_number:
                     today = timezone.now().date()
-                    prefix = f"R1-{today.strftime('%Y%m%d')}-"
+                    prefix = f"R1-{today.strftime('%Y%m')}-"
                     last_order = TravelOrder.objects.filter(
                         travel_order_number__startswith=prefix
                     ).order_by('-travel_order_number').first()
@@ -436,8 +442,9 @@ class ResubmitTravelOrderView(APIView):
         if not order.employees.filter(id=user.id).exists():
             return Response({"error": "Unauthorized."}, status=403)
 
-        if order.status != 'Rejected':
+        if 'rejected' not in order.status.lower():
             return Response({"error": "Only rejected orders can be resubmitted."}, status=400)
+
 
         # Get approval chain based on the filer
         filer = order.prepared_by

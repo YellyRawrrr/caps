@@ -1,6 +1,5 @@
-// components/TravelOrderPDF.jsx
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
-import logo from '../img/ncip-logo.png'; // Adjust path if needed
+import logo from '../img/ncip-logo.png'; // Update path if needed
 
 const styles = StyleSheet.create({
   page: {
@@ -89,41 +88,31 @@ const styles = StyleSheet.create({
   headertable: {
     fontWeight: 'bold',
   },
-  subHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  subHeader: {
-    fontWeight: 'bold',
-    fontSize: 8,
-  },
-  subCell: {
-    width: '50%',
-    textAlign: 'center',
-  },
-  subCell3: {
-    width: '33%',
-    textAlign: 'center',
-  },
   centerText: {
     textAlign: 'center',
     fontSize: 9,
   },
 });
 
+// Reusable Header component
+const Header = () => (
+  <View>
+    <Image src={logo} style={styles.logo} />
+    <View style={styles.header}>
+      <Text style={styles.heading1}>Republic of the Philippines</Text>
+      <Text style={styles.heading1}>Office of the President</Text>
+      <Text style={styles.heading2}>National Commission on Indigenous Peoples</Text>
+    </View>
+  </View>
+);
+
 export default function TravelOrderPDF({ data }) {
-  const itineraries = Array.isArray(data.itineraries) ? data.itineraries : [];
+  const { itineraries = [], transportation = {} } = data;
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <Image src={logo} style={styles.logo} />
-        <View style={styles.header}>
-          <Text style={styles.heading1}>Republic of the Philippines</Text>
-          <Text style={styles.heading1}>Office of the President</Text>
-          <Text style={styles.heading2}>National Commission on Indigenous Peoples</Text>
-        </View>
+        <Header />
 
         {/* Filing Details */}
         <View style={styles.row1}>
@@ -173,33 +162,36 @@ export default function TravelOrderPDF({ data }) {
           <Text style={styles.heading3}>Itinerary of Travel</Text>
         </View>
 
-{/* Itinerary Table */}
-<View style={styles.table}>
-  {/* Table Header */}
-  <View style={[styles.tableRow, { borderBottomWidth: 1 }]}>
-    <Text style={[styles.cell, styles.headertable, { width: '12%', borderRightWidth: 1 }]}>Date</Text>
-    <Text style={[styles.cell, styles.headertable, { width: '20%', borderRightWidth: 1 }]}>Destination</Text>
-    <Text style={[styles.cell, styles.headertable, { width: '15%', borderRightWidth: 1 }]}>Departure</Text>
-    <Text style={[styles.cell, styles.headertable, { width: '15%', borderRightWidth: 1 }]}>Arrival</Text>
-    <Text style={[styles.cell, styles.headertable, { width: '15%', borderRightWidth: 1 }]}>Transportation</Text>
-    <Text style={[styles.cell, styles.headertable, { width: '23%' }]}>Expenses (T / D / O)</Text>
-  </View>
+        {/* Itinerary Table */}
+        <View style={styles.table}>
+          {/* Table Header */}
+          <View style={[styles.tableRow, { borderBottomWidth: 1 }]}>  
+            <Text style={[styles.cell, styles.headertable, { width: '11%', borderRightWidth: 1 }]}>Date</Text>
+            <Text style={[styles.cell, styles.headertable, { width: '15%', borderRightWidth: 1 }]}>Destination</Text>
+            <Text style={[styles.cell, styles.headertable, { width: '11%', borderRightWidth: 1 }]}>Departure</Text>
+            <Text style={[styles.cell, styles.headertable, { width: '11%', borderRightWidth: 1 }]}>Arrival</Text>
+            <Text style={[styles.cell, styles.headertable, { width: '13%', borderRightWidth: 1 }]}>Means of Transportation</Text>
+            <Text style={[styles.cell, styles.headertable, { width: '13%', borderRightWidth: 1 }]}>Transpo</Text>
+            <Text style={[styles.cell, styles.headertable, { width: '9%', borderRightWidth: 1 }]}>Per Diem</Text>
+            <Text style={[styles.cell, styles.headertable, { width: '9%', borderRightWidth: 1 }]}>Others</Text>
+            <Text style={[styles.cell, styles.headertable, { width: '8%' }]}>Total</Text>
+          </View>
 
-  {/* Table Rows */}
-  {itineraries.map((item, idx) => (
-    <View key={idx} style={[styles.tableRow, { borderBottomWidth: 1 }]}>
-      <Text style={[styles.cell, { width: '12%', borderRightWidth: 1 }]}>{item.itinerary_date}</Text>
-      <Text style={[styles.cell, { width: '20%', borderRightWidth: 1 }]}>{item.destination || ''}</Text>
-      <Text style={[styles.cell, { width: '15%', borderRightWidth: 1 }]}>{item.departure_time}</Text>
-      <Text style={[styles.cell, { width: '15%', borderRightWidth: 1 }]}>{item.arrival_time}</Text>
-      <Text style={[styles.cell, { width: '15%', borderRightWidth: 1 }]}>{item.transportation}</Text>
-      <Text style={[styles.cell, { width: '23%' }]}>
-        {`${item.transportation_allowance || '0.00'} / ${item.per_diem || '0.00'} / ${item.other_expense || '0.00'}`}
-      </Text>
-    </View>
-  ))}
-</View>
-
+          {/* Table Rows */}
+          {itineraries.map((item, idx) => (
+            <View key={idx} style={[styles.tableRow, { borderBottomWidth: 1 }]}>  
+              <Text style={[styles.cell, { width: '11%', borderRightWidth: 1 }]}>{item.itinerary_date}</Text>
+              <Text style={[styles.cell, { width: '15%', borderRightWidth: 1 }]}>{item.destination || ''}</Text>
+              <Text style={[styles.cell, { width: '11%', borderRightWidth: 1 }]}>{item.departure_time}</Text>
+              <Text style={[styles.cell, { width: '11%', borderRightWidth: 1 }]}>{item.arrival_time}</Text>
+              <Text style={[styles.cell, { width: '13%', borderRightWidth: 1 }]}>{item.transportation || 'N/A'}</Text>
+              <Text style={[styles.cell, { width: '13%', borderRightWidth: 1 }]}>{item.transportation_allowance || '0.00'}</Text>
+              <Text style={[styles.cell, { width: '9%', borderRightWidth: 1 }]}>{item.per_diem || '0.00'}</Text>
+              <Text style={[styles.cell, { width: '9%', borderRightWidth: 1 }]}>{item.other_expense || '0.00'}</Text>
+              <Text style={[styles.cell, { width: '8%' }]}>{item.total_amount || '0.00'}</Text>
+            </View>
+          ))}
+        </View>
       </Page>
     </Document>
   );

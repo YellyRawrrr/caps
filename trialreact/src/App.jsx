@@ -72,7 +72,7 @@ function App() {
           </ProtectedRoute>
         } />
         <Route path="/travel-order/view/:id" element={
-          <ProtectedRoute allowedRoles={['employee', 'head']}>
+          <ProtectedRoute allowedRoles={['employee', 'head', 'admin']}>
             <ViewTravels/>
           </ProtectedRoute>
         } />

@@ -74,7 +74,7 @@ export default function LiquidationForm() {
   return (
     <Layout>
       <div className="max-w-3xl mx-auto px-4 py-6 bg-white rounded-2xl shadow">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">📑 Submit Liquidation</h2>
+        <h2 className="text-2xl font-bold mb-6 text-gray-800">Submit Liquidation</h2>
         <p className="mb-4 text-gray-600">
           <strong>Travel Order #:</strong> {order.travel_order_number} <br />
           <strong>Destination:</strong> {order.destination}

@@ -11,6 +11,8 @@ export default function ViewTravels() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [itineraries, setItineraries] = useState([]);
+  const [transportationMap, setTransportationMap] = useState({});
+
 
 useEffect(() => {
   const fetchOrder = async () => {
@@ -30,26 +32,41 @@ useEffect(() => {
       console.error('Error fetching itineraries:', err);
     }
   };
+const fetchTransportation = async () => {
+  try {
+    const res = await axios.get(`/transportation/`); // not `/transportation/${id}/`
+    const map = {};
+    res.data.forEach(item => {
+      map[item.id] = item.means_of_transportation;
+    });
+    setTransportationMap(map);
+  } catch (err) {
+    console.error('Error fetching transportation:', err);
+  }
+};
 
   fetchOrder();
   fetchItineraries();
+  fetchTransportation();
 }, [id]);
 
   if (!order) return <div className="p-6">Loading...</div>;
 
   return (
     <Layout>
+      <div className="max-w-6xl mx-auto p-6 mt-10 bg-white rounded-lg shadow-md">
+      <div className="container mx-auto p-6">
     <div className="max-w-4xl mx-auto p-6">
   <h2 className="text-2xl font-semibold mb-6 border-b pb-2">
     Travel Order #{order.id}
   </h2>
-<BlobProvider document={<TravelOrderPDF data={{...order, itineraries}} />}>
+<BlobProvider document={<TravelOrderPDF data={{...order, itineraries,  transportation: transportationMap}} />}>
   {({ url, loading, error }) => (
     <button
       onClick={() => {
         if (url) window.open(url, '_blank');
       }}
-      className="mb-6 px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700"
+      className="mb-6 px-4 py-2 text-white bg-red-600 rounded hover:bg-red-700"
       disabled={loading}
     >
       {loading ? 'Generating PDF...' : 'Open Travel Order PDF'}
@@ -86,6 +103,9 @@ useEffect(() => {
       <span className="font-medium">Purpose:</span> {order.purpose}
     </div>
         <div>
+      <span className="font-medium">Specific Role:</span> {order.specific_role}
+    </div>
+        <div>
       <span className="font-medium">Status:</span> {order.status}
     </div>
     {order.rejection_comment && (
@@ -119,7 +139,9 @@ useEffect(() => {
               <td className="px-4 py-2 border">{item.destination}</td>
               <td className="px-4 py-2 border">{item.departure_time}</td>
               <td className="px-4 py-2 border">{item.arrival_time}</td>
-              <td className="px-4 py-2 border">{item.transportation}</td>
+              <td className="px-4 py-2 border">
+                {transportationMap[item.transportation] || 'N/A'}
+              </td>
               <td className="px-4 py-2 border">{item.transportation_allowance}</td>
               <td className="px-4 py-2 border">{item.per_diem}</td>
               <td className="px-4 py-2 border">{item.other_expense}</td>
@@ -130,10 +152,12 @@ useEffect(() => {
       </table>
     </div>
   </div>
+  
 )}
 
 </div>
-
+</div>
+  </div>
 
     </Layout>
   );

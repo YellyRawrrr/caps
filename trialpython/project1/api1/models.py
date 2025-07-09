@@ -100,6 +100,7 @@ class TravelOrder(models.Model):
     
     destination = models.CharField(max_length=255)
     purpose = models.TextField()
+    specific_role = models.TextField(blank=True, null=True)
     fund = models.ForeignKey(Fund, on_delete=models.SET_NULL, null=True, blank=True)
     date_travel_from = models.DateField()
     date_travel_to = models.DateField()

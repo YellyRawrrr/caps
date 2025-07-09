@@ -16,11 +16,26 @@ export default function RejectedOrders() {
     fetch();
   }, []);
 
-  const resubmit = async (id) => {
+const resubmit = async (id) => {
+  try {
     await axios.patch(`resubmit-travel-order/${id}/`);
     toast.success('Resubmitted!');
     setOrders(prev => prev.filter(o => o.id !== id));
-  };
+  } catch (error) {
+    console.error('Resubmit error:', error);
+
+    if (error.response?.status === 401) {
+      toast.error('You are not authorized. Please log in again.');
+    } else if (error.response?.status === 403) {
+      toast.error('You are not allowed to resubmit this order.');
+    } else if (error.response?.data?.error) {
+      toast.error(error.response.data.error);
+    } else {
+      toast.error('Failed to resubmit travel order.');
+    }
+  }
+};
+
 
   return (
     <Layout>

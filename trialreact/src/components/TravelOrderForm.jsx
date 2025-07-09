@@ -3,34 +3,8 @@ import axios from '../api/axios';
 import toast from 'react-hot-toast';
 import SignatureCanvas from 'react-signature-canvas';
 
-
-
-export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
-  if (!isOpen) return null;
-
-  const tabs = ['identification', 'employee', 'itinerary', 'validation'];
-  const tabLabels = {
-    identification: 'Identification',
-    employee: 'Employee Details',
-    itinerary: 'Itinerary',
-    validation: 'Validation',
-  };
-
-  const [activeTab, setActiveTab] = useState('identification');
-  const [formData, setFormData] = useState({
-    destination: '',
-    purpose: '',
-    date_travel_from: '',
-    date_travel_to: '',
-    mode_of_filing: '',
-    date_of_filing: new Date().toISOString().split('T')[0],
-    fund_cluster: '',
-    prepared_by: '',
-    employee_position: '',
-    type_of_user: '',
-  });
-
-  const TYPE_OF_USER_CHOICES = [
+// Type of user choices for dropdown
+const TYPE_OF_USER_CHOICES = [
   'Community Service Center Employee',
   'Provincial Office Employee',
   'Regional Office-TMSD Employee',
@@ -42,6 +16,33 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
   'AFSD Chief',
 ];
 
+export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
+  if (!isOpen) return null;
+
+  // Tab navigation
+  const tabs = ['identification', 'employee', 'itinerary', 'validation'];
+  const tabLabels = {
+    identification: 'Identification',
+    employee: 'Employee Details',
+    itinerary: 'Itinerary',
+    validation: 'Validation',
+  };
+
+  // Form state
+  const [activeTab, setActiveTab] = useState('identification');
+  const [formData, setFormData] = useState({
+    destination: '',
+    purpose: '',
+    specific_role: '',
+    date_travel_from: '',
+    date_travel_to: '',
+    mode_of_filing: '',
+    date_of_filing: new Date().toISOString().split('T')[0],
+    fund_cluster: '',
+    prepared_by: '',
+    employee_position: '',
+    type_of_user: '',
+  });
 
   const [itineraryList, setItineraryList] = useState([
     {
@@ -83,76 +84,82 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
     return date.toISOString().split('T')[0];
   };
 
-useEffect(() => {
-  const fetchInitialData = async () => {
-    try {
-      const [empRes, userRes, fundRes, transRes, posRes] = await Promise.all([
-        axios.get('employees/'),
-        axios.get('user-info/'),
-        axios.get('funds/'),
-        axios.get('transportation/'),
-        axios.get('employee-position/'),
-      ]);
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const [empRes, userRes, fundRes, transRes, posRes] = await Promise.all([
+          axios.get('employees/'),
+          axios.get('user-info/'),
+          axios.get('funds/'),
+          axios.get('transportation/'),
+          axios.get('employee-position/'),
+        ]);
 
-      setEmployeeList(empRes.data);
-      setCurrentUserId(userRes.data.id);
-      setFundList(fundRes.data);
-      setTransportationList(transRes.data);
-      setEmployeePositions(posRes.data);
+        const nonExcludedEmployees = empRes.data.filter(
+          emp => !['admin', 'bookkeeper', 'accountant'].includes(emp.user_level)
+        );
+        setEmployeeList(nonExcludedEmployees);
 
-      const preparedEmp = empRes.data.find(
-        (e) => e.id === userRes.data.id
+        setCurrentUserId(userRes.data.id);
+        setSelectedEmployees([userRes.data.id.toString()]);
+        setEmployeeSearch([`${userRes.data.first_name} ${userRes.data.last_name}`]);
+        setShowDropdown([false]);
+        setFundList(fundRes.data);
+        setTransportationList(transRes.data);
+        setEmployeePositions(posRes.data);
+
+        const preparedEmp = nonExcludedEmployees.find(e => e.id === userRes.data.id);
+
+
+        const position = preparedEmp?.employee_position
+          ? posRes.data.find((p) => p.id === preparedEmp.employee_position)
+          : null;
+
+        setPreparedByPositionName(position?.position_name || '');
+
+        setFormData((prev) => ({
+          ...prev,
+          prepared_by: userRes.data.id.toString(),
+          employee_position: preparedEmp?.employee_position?.toString() || '',
+        }));
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
+
+
+  useEffect(() => {
+    const fetchPreparedByPosition = async () => {
+      if (!formData.prepared_by) {
+        setPreparedByPositionName('');
+        return;
+      }
+
+      const emp = employeeList.find(
+        (e) => e.id === parseInt(formData.prepared_by)
       );
 
-      const position = preparedEmp?.employee_position
-        ? posRes.data.find((p) => p.id === preparedEmp.employee_position)
-        : null;
+      if (emp?.employee_position) {
+        const pos = employeePositions.find(
+          (p) => p.id === emp.employee_position
+        );
+        setPreparedByPositionName(pos?.position_name || '');
 
-      setPreparedByPositionName(position?.position_name || '');
+        // Optional: set this if sending to backend
+        // setFormData((prev) => ({
+        //   ...prev,
+        //   employee_position: emp.employee_position?.toString() || '',
+        // }));
+      } else {
+        setPreparedByPositionName('');
+      }
+    };
 
-      setFormData((prev) => ({
-        ...prev,
-        prepared_by: userRes.data.id.toString(),
-        employee_position: preparedEmp?.employee_position?.toString() || '',
-      }));
-    } catch (err) {
-      console.error('Failed to fetch data:', err);
-    }
-  };
-
-  fetchInitialData();
-}, []);
-
-
-useEffect(() => {
-  const fetchPreparedByPosition = async () => {
-    if (!formData.prepared_by) {
-      setPreparedByPositionName('');
-      return;
-    }
-
-    const emp = employeeList.find(
-      (e) => e.id === parseInt(formData.prepared_by)
-    );
-
-    if (emp?.employee_position) {
-      const pos = employeePositions.find(
-        (p) => p.id === emp.employee_position
-      );
-      setPreparedByPositionName(pos?.position_name || '');
-
-      // Optional: set this if sending to backend
-      // setFormData((prev) => ({
-      //   ...prev,
-      //   employee_position: emp.employee_position?.toString() || '',
-      // }));
-    } else {
-      setPreparedByPositionName('');
-    }
-  };
-
-  fetchPreparedByPosition();
-}, [formData.prepared_by, employeeList, employeePositions]);
+    fetchPreparedByPosition();
+  }, [formData.prepared_by, employeeList, employeePositions]);
 
 
 
@@ -191,20 +198,26 @@ useEffect(() => {
 
   const handleAddEmployee = () => {
     setSelectedEmployees((prev) => [...prev, null]);
+setEmployeeSearch((prev) => [...prev, '']);
+setShowDropdown((prev) => [...prev, false]);
+
   };
 
   const handleRemoveEmployee = (index) => {
     setSelectedEmployees((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const availableOptions = (index) => {
-    return employeeList.filter(
-      (emp) =>
-        emp.id !== currentUserId &&
-        (!selectedEmployees.includes(emp.id?.toString()) ||
-          emp.id?.toString() === selectedEmployees[index])
-    );
-  };
+const availableOptions = (index) => {
+  return employeeList.filter((emp) => {
+    const isAlreadySelected = selectedEmployees.includes(emp.id?.toString());
+    const isCurrentSelection = emp.id?.toString() === selectedEmployees[index];
+    const isPreparedBy = emp.id === currentUserId;
+
+    return (!isAlreadySelected || isCurrentSelection) && emp.id !== currentUserId;
+  });
+};
+
+
 
   // Helper for filtering employees for autocomplete
   const filteredEmployeeOptions = (index, searchList, optionsList) => {
@@ -261,6 +274,7 @@ let signatureBase64 = null;
 if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
   signatureBase64 = sigPadRef.current.getCanvas().toDataURL('image/png');
 }
+setSignatureData(signatureBase64); // <-- Add this
 
 
     const validEmployees = selectedEmployees.filter((id) => !!id);
@@ -324,6 +338,7 @@ const isCurrentTabValid = () => {
     const hasRequiredFields = [
       formData.destination,
       formData.purpose,
+      formData.specific_role,
       formData.date_travel_from,
       formData.date_travel_to,
       formData.fund_cluster,
@@ -528,13 +543,17 @@ const isCurrentTabValid = () => {
                       </ul>
                     )}
                   </div>
-                  {selectedEmployees.length > 1 && (
+                  {selectedEmployees.length > 1 && index !== 0 && (
                     <button
                       type="button"
                       onClick={() => handleRemoveEmployee(index)}
-                      className="text-red-500 text-sm"
+                      className="text-red-500 text-sm flex items-center gap-1 px-2 py-1 rounded hover:bg-red-100 transition"
+                      title="Remove employee"
                     >
-                      ❌
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      <span className="sr-only">Remove</span>
                     </button>
                   )}
                 </div>
@@ -597,6 +616,19 @@ const isCurrentTabValid = () => {
                 <textarea
                   name="purpose"
                   value={formData.purpose}
+                  onChange={handleChange}
+                  rows="3"
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-sm font-medium text-gray-700">
+                  Specific Role
+                </label>
+                <textarea
+                  name="specific_role"
+                  value={formData.specific_role}
                   onChange={handleChange}
                   rows="3"
                   required
