@@ -57,22 +57,52 @@ class EmployeePositionSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
+
+    # Computed fields
     full_name = serializers.SerializerMethodField()
-    position = serializers.StringRelatedField()
+    employee_position = serializers.PrimaryKeyRelatedField(read_only=True)
+    employee_position_name = serializers.SerializerMethodField()
+
+    # Enum display fields
+    user_level_display = serializers.SerializerMethodField()
+    employee_type_display = serializers.SerializerMethodField()
+    
+    type_of_user_display = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'password', 'user_level', 'employee_type', 'first_name', 'last_name', 'full_name', 'position', ]
+        fields = [
+            'id', 'username', 'password',
+            'user_level', 'user_level_display',
+            'employee_type', 'employee_type_display',
+            'type_of_user', 'type_of_user_display',
+            'first_name', 'last_name',
+            'full_name', 'employee_position', 'employee_position_name'
+        ]
 
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}"
 
+    def get_user_level_display(self, obj):
+        return obj.get_user_level_display()
+
+    def get_employee_type_display(self, obj):
+        return obj.get_employee_type_display()
+
+    def get_type_of_user_display(self, obj):  # ✅ Add this method
+        return obj.get_type_of_user_display()
+
+    def get_employee_position_name(self, obj):
+        return obj.employee_position.position_name if obj.employee_position else None
+
     def create(self, validated_data):
         password = validated_data.pop('password')
         user = CustomUser(**validated_data)
-        user.set_password(password)  # uses Django's internal hashing system
+        user.set_password(password)
         user.save()
         return user
+
+
 
     
 class TravelOrderSimpleSerializer(serializers.ModelSerializer):

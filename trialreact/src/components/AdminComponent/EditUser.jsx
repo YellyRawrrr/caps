@@ -12,20 +12,57 @@ const EditUser = ({ isOpen, onClose, user, fetchUsers }) => {
   const [userlevel, setUserlevel] = useState("");
   const [employeetype, setEmployeetype] = useState("");
   const [positionId, setPositionId] = useState("");
+  const [typeOfUser, setTypeOfUser] = useState(""); // ✅ new state
   const [positions, setPositions] = useState([]);
   const [error, setError] = useState(null);
 
-  // Load initial form values and positions
-  useEffect(() => {
-    if (user) {
-      setUsername(user.username || "");
-      setPassword("");
-      setFirstname(user.first_name || "");
-      setLastname(user.last_name || "");
-      setUserlevel(user.user_level || "");
-      setEmployeetype(user.employee_type || "");
-      setPositionId(user.employee_position || "");
-    }
+  const allEmployeeTypeOptions = [
+    { value: 'urdaneta_csc', label: 'Urdaneta CSC' },
+    { value: 'sison_csc', label: 'Sison CSC' },
+    { value: 'pugo_csc', label: 'Pugo CSC' },
+    { value: 'sudipen_csc', label: 'Sudipen CSC' },
+    { value: 'tagudin_csc', label: 'Tagudin CSC' },
+    { value: 'banayoyo_csc', label: 'Banayoyo CSC' },
+    { value: 'dingras_csc', label: 'Dingras CSC' },
+    { value: 'pangasinan_po', label: 'Pangasinan PO' },
+    { value: 'ilocossur_po', label: 'Ilocos Sur PO' },
+    { value: 'ilocosnorte_po', label: 'Ilocos Norte PO' },
+    { value: 'launion_po', label: 'La Union PO' },
+    { value: 'tmsd', label: 'TMSD' },
+    { value: 'afsd', label: 'AFSD' },
+    { value: 'regional', label: 'Regional' },
+  ];
+
+  const typeOfUserOptions = [
+    'Community Service Center Employee',
+    'Provincial Office Employee',
+    'Regional Office-TMSD Employee',
+    'Regional Office-AFSD Employee',
+    'Regional Office-LU Employee',
+    'CSC Head',
+    'PO Head',
+    'TMSD Chief',
+    'AFSD Chief',
+  ];
+
+  const filteredEmployeeTypes = allEmployeeTypeOptions.filter(opt => {
+    if (userlevel === 'admin' || !userlevel) return false;
+    if (userlevel === 'director') return opt.value === 'regional';
+    return true;
+  });
+
+useEffect(() => {
+  if (user) {
+    setUsername(user.username || "");
+    setPassword("");
+    setFirstname(user.first_name || "");
+    setLastname(user.last_name || "");
+    setUserlevel(user.user_level || "");
+    setEmployeetype(user.employee_type || "");        // ✅ pre-fill employee type
+    setPositionId(user.employee_position   || "");      // ✅ pre-fill position
+    setTypeOfUser(user.type_of_user || "");           // ✅ pre-fill type of user
+  }
+
 
     const fetchPositions = async () => {
       try {
@@ -40,22 +77,31 @@ const EditUser = ({ isOpen, onClose, user, fetchUsers }) => {
     fetchPositions();
   }, [user]);
 
+  useEffect(() => {
+    if (userlevel === 'admin' || !userlevel) {
+      setEmployeetype('');
+    } else if (userlevel === 'director' && employeetype !== 'regional') {
+      setEmployeetype('');
+    }
+  }, [userlevel]);
+
   const editUser = async (e) => {
     e.preventDefault();
 
     try {
       await axios.put(`/employees/${user.id}/`, {
         username,
-        ...(password && { password }), // Only include password if not empty
+        ...(password && { password }),
         first_name: firstname,
         last_name: lastname,
         user_level: userlevel,
         employee_type: employeetype || null,
         employee_position: positionId || null,
+        type_of_user: typeOfUser || null, // ✅ included in request
       });
 
       toast.success("User updated successfully!");
-      fetchUsers(); // optional refresh callback
+      fetchUsers();
       onClose();
     } catch (error) {
       console.error("Error updating user:", error);
@@ -74,101 +120,34 @@ const EditUser = ({ isOpen, onClose, user, fetchUsers }) => {
 
         {error && <div className="text-red-500 mb-4">{error}</div>}
 
-        <form onSubmit={editUser} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-2 border rounded-md"
-              required
-            />
-          </div>
+        <form onSubmit={editUser} className="space-y-4">
+          <InputField label="Username" value={username} onChange={setUsername} required />
+          <InputField label="Password" value={password} onChange={setPassword} type="password" placeholder="Leave blank to keep current" />
+          <InputField label="First Name" value={firstname} onChange={setFirstname} required />
+          <InputField label="Last Name" value={lastname} onChange={setLastname} required />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border rounded-md"
-              
-            />
-          </div>
+          <SelectField label="User Level" value={userlevel} onChange={setUserlevel} required options={[
+            { value: '', label: 'Select user level' },
+            { value: 'employee', label: 'Employee' },
+            { value: 'head', label: 'Head' },
+            { value: 'admin', label: 'Admin' },
+            { value: 'director', label: 'Director' }
+          ]} />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Firstname</label>
-            <input
-              type="text"
-              value={firstname}
-              onChange={(e) => setFirstname(e.target.value)}
-              className="w-full px-4 py-2 border rounded-md"
-              required
-            />
-          </div>
+          <SelectField label="Employee Type" value={employeetype} onChange={setEmployeetype} required={['employee', 'head', 'director'].includes(userlevel)} disabled={userlevel === 'admin' || !userlevel}
+            options={[{ value: '', label: 'Select employee type' }, ...filteredEmployeeTypes]} />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Lastname</label>
-            <input
-              type="text"
-              value={lastname}
-              onChange={(e) => setLastname(e.target.value)}
-              className="w-full px-4 py-2 border rounded-md"
-              required
-            />
-          </div>
+          <SelectField label="Employee Position" value={positionId} onChange={setPositionId}
+            options={[{ value: '', label: 'Select position (optional)' }, ...positions.map(pos => ({ value: pos.id, label: pos.position_name }))]} />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">User Level</label>
-            <select
-              value={userlevel}
-              onChange={(e) => setUserlevel(e.target.value)}
-              className="w-full px-4 py-2 border rounded-md"
-              required
-            >
-              <option value="">Select user level</option>
-              <option value="employee">Employee</option>
-              <option value="head">Head</option>
-              <option value="admin">Admin</option>
-              <option value="director">Director</option>
-            </select>
-          </div>
+          {/* ✅ New Field: Type of User */}
+          <SelectField label="Type of User" value={typeOfUser} onChange={setTypeOfUser}
+            options={[{ value: '', label: 'Select type of user (optional)' }, ...typeOfUserOptions.map(type => ({ value: type, label: type }))]} />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Employee Type</label>
-            <select
-              value={employeetype}
-              onChange={(e) => setEmployeetype(e.target.value)}
-              className="w-full px-4 py-2 border rounded-md"
-            >
-              <option value="">Select employee type (optional)</option>
-              <option value="csc">CSC</option>
-              <option value="po">PO</option>
-              <option value="tmsd">TMSD</option>
-              <option value="afsd">AFSD</option>
-              <option value="regional">Regional</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Employee Position</label>
-            <select
-              value={positionId}
-              onChange={(e) => setPositionId(e.target.value)}
-              className="w-full px-4 py-2 border rounded-md"
-            >
-              <option value="">Select position (optional)</option>
-              {positions.map((pos) => (
-                <option key={pos.id} value={pos.id}>{pos.position_name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex justify-end">
+          <div className="flex justify-end mt-6">
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-800 text-white font-semibold rounded-md hover:bg-blue-700 transition"
+              className="bg-blue-800 text-white px-6 py-2 rounded-md hover:bg-blue-900 transition"
             >
               Update User
             </button>
@@ -178,5 +157,38 @@ const EditUser = ({ isOpen, onClose, user, fetchUsers }) => {
     </div>
   );
 };
+
+// ✅ Reusable input field
+const InputField = ({ label, value, onChange, type = "text", required = false, placeholder = "" }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700">{label}</label>
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="w-full px-4 py-2 border rounded-md"
+      required={required}
+      placeholder={placeholder}
+    />
+  </div>
+);
+
+// ✅ Reusable select field
+const SelectField = ({ label, value, onChange, options, required = false, disabled = false }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700">{label}</label>
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className="w-full px-4 py-2 border rounded-md"
+      required={required}
+      disabled={disabled}
+    >
+      {options.map(opt => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+    </select>
+  </div>
+);
 
 export default EditUser;

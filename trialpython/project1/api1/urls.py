@@ -7,7 +7,8 @@ from .views import (
     FundDetailView,TransportationDetailView, EmployeeDetailUpdateView,
     EmployeePositionCreateView,EmployeePositionDetailView,
     SubmitLiquidationView, BookkeeperReviewView, AccountantReviewView, LiquidationListView,
-    EmployeeLiquiationView, LiquidationDetailView, TravelOrderItineraryView,
+    TravelOrdersNeedingLiquidationView, LiquidationDetailView, TravelOrderItineraryView,
+    EmployeeDashboardAPIView, AdminDashboard, HeadDashboardAPIView, DirectorDashboardView,
     login_view, logout_view,
     refresh_token_view, protected_view
 )
@@ -41,18 +42,37 @@ urlpatterns = [
     path('employee-position/<int:pk>/', EmployeePositionDetailView.as_view(), name='fund-detail'),
 
     #liquidation
+    #  Employee: Submit or resubmit liquidation
     path('liquidation/<int:pk>/submit/', SubmitLiquidationView.as_view(), name='submit-liquidation'),
+
+    #  Bookkeeper: Pre-audit (approve/reject)
     path('liquidation/<int:pk>/bookkeeper-review/', BookkeeperReviewView.as_view(), name='bookkeeper-review'),
+
+    #  Accountant: Final audit (approve/reject)
     path('liquidation/<int:pk>/accountant-review/', AccountantReviewView.as_view(), name='accountant-review'),
+
+    #  All liquidations (admin/staff/bookkeeper view)
     path('liquidations/', LiquidationListView.as_view(), name='liquidation-list'),
-    path('employee-liquidation/', EmployeeLiquiationView.as_view(), name='employee-liquidation'),
+
+    # 👤 Employee: View their own liquidation (history/dashboard)
+    path("travel-orders/needing-liquidation/", TravelOrdersNeedingLiquidationView.as_view(), name="travel-orders-needing-liquidation"),
+
+
+    # 🔍 Detail view
     path('liquidations/<int:pk>/', LiquidationDetailView.as_view(), name='liquidation-detail'),
+
 
 
 
     path('update-travel-order/<int:pk>/', TravelOrderUpdateView.as_view(), name='update-travel-order'),
     path('approve-travel-order/<int:pk>/', ApproveTravelOrderView.as_view(), name='approve-travel-order'),
     path('resubmit-travel-order/<int:pk>/', ResubmitTravelOrderView.as_view(), name='resubmit-travel-order'),
+
+    #dashboard
+    path('employee-dashboard/', EmployeeDashboardAPIView.as_view(), name='employee-dashboard'),
+    path('admin-dashboard/', AdminDashboard.as_view(), name='travel-order-chart'),
+    path('head-dashboard/', HeadDashboardAPIView.as_view(), name='head-dashboard'),
+    path('director-dashboard/', DirectorDashboardView.as_view(), name='director-dashboard'),
 
     # Authenticated User Info
     path('user-info/', CurrentUserView.as_view(), name='user-info'),

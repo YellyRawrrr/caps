@@ -11,28 +11,46 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
   const [lastname, setLastname] = useState("");
   const [userlevel, setUserlevel] = useState("");
   const [employeetype, setEmployeetype] = useState("");
-  const [positionId, setPositionId] = useState(""); // new
-  const [positions, setPositions] = useState([]);   // new
+  const [positionId, setPositionId] = useState("");
+  const [positions, setPositions] = useState([]);
+  const [typeOfUser, setTypeOfUser] = useState("");
 
-  const employeeTypeOptions = {
-    employee: [
-      { value: 'csc', label: 'CSC' },
-      { value: 'po', label: 'PO' },
-      { value: 'tmsd', label: 'TMSD' },
-      { value: 'afsd', label: 'AFSD' },
-      { value: 'regional', label: 'Regional' },
-    ],
-    head: [
-      { value: 'csc', label: 'CSC' },
-      { value: 'po', label: 'PO' },
-      { value: 'tmsd', label: 'TMSD' },
-      { value: 'afsd', label: 'AFSD' },
-    ],
-    director: [
-      { value: 'regional', label: 'Regional' },
-    ],
-    admin: [],
-  };
+
+  const allEmployeeTypeOptions = [
+    { value: 'urdaneta_csc', label: 'Urdaneta CSC' },
+    { value: 'sison_csc', label: 'Sison CSC' },
+    { value: 'pugo_csc', label: 'Pugo CSC' },
+    { value: 'sudipen_csc', label: 'Sudipen CSC' },
+    { value: 'tagudin_csc', label: 'Tagudin CSC' },
+    { value: 'banayoyo_csc', label: 'Banayoyo CSC' },
+    { value: 'dingras_csc', label: 'Dingras CSC' },
+    { value: 'pangasinan_po', label: 'Pangasinan PO' },
+    { value: 'ilocossur_po', label: 'Ilocos Sur PO' },
+    { value: 'ilocosnorte_po', label: 'Ilocos Norte PO' },
+    { value: 'launion_po', label: 'La Union PO' },
+    { value: 'tmsd', label: 'TMSD' },
+    { value: 'afsd', label: 'AFSD' },
+    { value: 'regional', label: 'Regional' },
+  ];
+
+  const typeOfUserOptions = [
+  { value: 'Community Service Center Employee', label: 'Community Service Center Employee' },
+  { value: 'Provincial Office Employee', label: 'Provincial Office Employee' },
+  { value: 'Regional Office-TMSD Employee', label: 'Regional Office-TMSD Employee' },
+  { value: 'Regional Office-AFSD Employee', label: 'Regional Office-AFSD Employee' },
+  { value: 'Regional Office-LU Employee', label: 'Regional Office-LU Employee' },
+  { value: 'CSC Head', label: 'CSC Head' },
+  { value: 'PO Head', label: 'PO Head' },
+  { value: 'TMSD Chief', label: 'TMSD Chief' },
+  { value: 'AFSD Chief', label: 'AFSD Chief' },
+];
+
+
+  const filteredEmployeeTypes = allEmployeeTypeOptions.filter(opt => {
+    if (userlevel === 'admin' || !userlevel) return false;
+    if (userlevel === 'director') return opt.value === 'regional';
+    return true;
+  });
 
   useEffect(() => {
     const fetchPositions = async () => {
@@ -48,18 +66,13 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
     fetchPositions();
   }, []);
 
-  // Reset employee type if userlevel changes to an incompatible one
   useEffect(() => {
     if (userlevel === 'admin' || !userlevel) {
       setEmployeetype('');
     } else if (userlevel === 'director' && employeetype !== 'regional') {
       setEmployeetype('');
-    } else if (userlevel === 'head' && !['csc','po','tmsd','afsd'].includes(employeetype)) {
-      setEmployeetype('');
-    } else if (userlevel === 'employee' && !['csc','po','tmsd','afsd','regional'].includes(employeetype)) {
-      setEmployeetype('');
     }
-  }, [userlevel, employeetype]);
+  }, [userlevel]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -72,7 +85,8 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
         last_name: lastname,
         user_level: userlevel,
         employee_type: employeetype || null,
-        employee_position: positionId || null, // send position ID
+        type_of_user: typeOfUser || null,
+        employee_position: positionId || null,
       });
 
       toast.success("User added successfully!");
@@ -98,7 +112,7 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
             <input
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={e => setUsername(e.target.value)}
               className="w-full px-4 py-2 border rounded-md"
               required
             />
@@ -109,29 +123,29 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               className="w-full px-4 py-2 border rounded-md"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Firstname</label>
+            <label className="block text-sm font-medium text-gray-700">First Name</label>
             <input
               type="text"
               value={firstname}
-              onChange={(e) => setFirstname(e.target.value)}
+              onChange={e => setFirstname(e.target.value)}
               className="w-full px-4 py-2 border rounded-md"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Lastname</label>
+            <label className="block text-sm font-medium text-gray-700">Last Name</label>
             <input
               type="text"
               value={lastname}
-              onChange={(e) => setLastname(e.target.value)}
+              onChange={e => setLastname(e.target.value)}
               className="w-full px-4 py-2 border rounded-md"
               required
             />
@@ -141,7 +155,7 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
             <label className="block text-sm font-medium text-gray-700">User Level</label>
             <select
               value={userlevel}
-              onChange={(e) => setUserlevel(e.target.value)}
+              onChange={e => setUserlevel(e.target.value)}
               className="w-full px-4 py-2 border rounded-md"
               required
             >
@@ -157,23 +171,41 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
             <label className="block text-sm font-medium text-gray-700">Employee Type</label>
             <select
               value={employeetype}
-              onChange={(e) => setEmployeetype(e.target.value)}
+              onChange={e => setEmployeetype(e.target.value)}
               className="w-full px-4 py-2 border rounded-md"
               disabled={userlevel === 'admin' || !userlevel}
-              required={userlevel === 'employee' || userlevel === 'head' || userlevel === 'director'}
+              required={['employee', 'head', 'director'].includes(userlevel)}
             >
-              <option value="">{userlevel === 'admin' || !userlevel ? 'No employee type available' : 'Select employee type'}</option>
-              {(employeeTypeOptions[userlevel] || []).map(opt => (
+              <option value="">Select employee type</option>
+              {filteredEmployeeTypes.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700">Type of User</label>
+            <select
+              value={typeOfUser}
+              onChange={(e) => setTypeOfUser(e.target.value)}
+              className="w-full px-4 py-2 border rounded-md"
+              required={['employee', 'head'].includes(userlevel)} // Optional: restrict based on level
+            >
+              <option value="">Select type of user</option>
+              {typeOfUserOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+
+          <div>
             <label className="block text-sm font-medium text-gray-700">Employee Position</label>
             <select
               value={positionId}
-              onChange={(e) => setPositionId(e.target.value)}
+              onChange={e => setPositionId(e.target.value)}
               className="w-full px-4 py-2 border rounded-md"
             >
               <option value="">Select position (optional)</option>

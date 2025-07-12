@@ -21,8 +21,12 @@ const LoginPage = () => {
       {/* Main Content Area - Login Form */}
       <div className="flex-grow flex flex-col items-center justify-center p-4 bg-blue-50">
         {/* Logo and Title above the login form */}
-        <div className="mb-8 text-center">
-          <div className="w-32 h-32 mx-auto rounded-full flex items-center justify-center mb-10 overflow-hidden shadow-2xl">
+        
+
+        {/* Login Form */}
+        <div className="bg-gray-100 shadow-lg rounded-lg p-8 w-full max-w-md bg-opacity-50 border-2 border-gray-400">
+          <div className="mb-8 text-center">
+          <div className="w-32 h-32 mx-auto rounded-full flex items-center justify-center mb-5 overflow-hidden shadow-2xl">
             <img
               src={background}
               alt="NCIP Logo"
@@ -34,15 +38,9 @@ const LoginPage = () => {
             />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-1">
-            National Commission on Indigenous Peoples
-          </h1>
-          <p className="text-2xl font-bold text-gray-800">
             IPass: Travel Order System
-          </p>
+          </h1>
         </div>
-
-        {/* Login Form */}
-        <div className="bg-gray-100 shadow-lg rounded-lg p-8 w-full max-w-md bg-opacity-50 border-2 border-gray-400">
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Username Field */}
             <div>

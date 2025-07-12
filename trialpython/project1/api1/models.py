@@ -23,17 +23,39 @@ USER_LEVEL_CHOICES = [
 ]
 
 EMPLOYEE_TYPE_CHOICES = [
-    ('csc', 'CSC'),
-    ('po', 'PO'),
+    ('urdaneta_csc', 'Urdaneta CSC'),
+    ('sison_csc', 'Sison CSC'),
+    ('pugo_csc', 'Pugo CSC'),
+    ('sudipen_csc', 'Sudipen CSC'),
+    ('tagudin_csc', 'Tagudin CSC'),
+    ('banayoyo_csc', 'Banayoyo CSC'),
+    ('dingras_csc', 'Dingras CSC'),
+    ('pangasinan_po', 'Pangasinan PO'),
+    ('ilocossur_po', 'Ilocos Sur PO'),
+    ('ilocosnorte_po', 'Ilocos Norte PO'),
+    ('launion_po', 'La Union PO'),
     ('tmsd', 'TMSD'),
     ('afsd', 'AFSD'),
     ('regional', 'Regional')
 ]
 
+TYPE_OF_USER = [
+    ('Community Service Center Employee', 'Community service Center Employee'),
+    ('Provincial Office Employee', 'Provincial Office Employee'),
+    ('Regional Office-TMSD Employee','Regional Office-TMSD Employee'),
+    ('Regional Office-AFSD Employee', 'Regional Office-AFSD Employee'),
+    ('Regional Office-LU Employee', 'Regional Office-LU Employee'),
+    ('CSC Head','CSC Head'),
+    ('PO Head','PO Head'),
+    ('TMSD Chief','TMSD Chief'),
+    ('AFSD Chief','AFSD Chief'),
+]
+
 class CustomUser(AbstractUser):
     user_level = models.CharField(max_length=20, choices=USER_LEVEL_CHOICES)
-    employee_type = models.CharField(max_length=20, choices=EMPLOYEE_TYPE_CHOICES, blank=True, null=True)
+    employee_type = models.CharField(max_length=30, choices=EMPLOYEE_TYPE_CHOICES, blank=True, null=True)
     employee_position = models.ForeignKey(EmployeePosition, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
+    type_of_user = models.CharField(max_length=100, choices=TYPE_OF_USER, blank=True, null=True)
     
 
     @property
@@ -76,17 +98,7 @@ class TravelOrder(models.Model):
         ('07_TF','07_TF')
     ]
 
-    TYPE_OF_USER = [
-        ('Community Service Center Employee', 'Community service Center Employee'),
-        ('Provincial Office Employee', 'Provincial Office Employee'),
-        ('Regional Office-TMSD Employee','Regional Office-TMSD Employee'),
-        ('Regional Office-AFSD Employee', 'Regional Office-AFSD Employee'),
-        ('Regional Office-LU Employee', 'Regional Office-LU Employee'),
-        ('CSC Head','CSC Head'),
-        ('PO Head','PO Head'),
-        ('TMSD Chief','TMSD Chief'),
-        ('AFSD Chief','AFSD Chief'),
-    ]
+
 
     employees = models.ManyToManyField(CustomUser, related_name='travel_orders')
     travel_order_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
@@ -108,7 +120,7 @@ class TravelOrder(models.Model):
     #validation
     prepared_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='prepared_travel_order')
     employee_position = models.ForeignKey(EmployeePosition, on_delete=models.SET_NULL, null=True, blank=True, related_name='travel_orders')
-    type_of_user = models.CharField(max_length=100, choices=TYPE_OF_USER, blank=True, null=True)
+    
     status = models.CharField(max_length=100, choices=STATUS_CHOICES, default='Travel order is placed')
     approval_stage = models.IntegerField(default=0)
     current_approver = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL, related_name='approving_orders')
@@ -172,6 +184,7 @@ class Liquidation(models.Model):
     certificate_of_appearance = models.FileField(upload_to='liquidations/certificate_of_appearance/')
     after_travel_report = models.FileField(upload_to='liquidations/after_travel_report/')
     submitted_at = models.DateTimeField(auto_now_add=True)
+    resubmitted_at = models.DateTimeField(null=True, blank=True)
 
     reviewed_by_bookkeeper = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookkeeper_reviews')
     reviewed_at_bookkeeper = models.DateTimeField(null=True, blank=True)

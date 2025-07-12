@@ -35,17 +35,17 @@ const EmployeeTravel = () => {
     
   return (
     <Layout>
+      <div className="max-w-6xl mx-auto p-6 mt-10 bg-white rounded-lg shadow-md">
+      <div className="container mx-auto p-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        
-
         <div className="overflow-x-auto bg-white shadow-md rounded-lg">
           <table className="min-w-full table-auto">
-            <thead className="bg-gray-100">
+            <thead className="bg-blue-800">
               <tr>
-                {['Destination', 'Purpose', 'Departure', 'Return','Status','Actions'].map((header) => (
+                {['Travel Order No.', 'Destination', 'Purpose', 'Departure', 'Return','Status','Actions'].map((header) => (
                   <th
                     key={header}
-                    className={`px-6 py-3 text-sm font-semibold text-gray-700 border-b ${
+                    className={`px-6 py-3 text-sm font-semibold text-gray-50 border-b ${
                       header === 'Actions' ? 'text-right' : 'text-left'
                     }`}
                   >
@@ -58,6 +58,7 @@ const EmployeeTravel = () => {
               {paginatedOrders.length > 0 ? (
                 paginatedOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.travel_order_number}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.destination}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.purpose}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.date_travel_from}</td>
@@ -123,6 +124,8 @@ const EmployeeTravel = () => {
             </div>
           )}
         </div>
+      </div>
+      </div>
       </div>
     </Layout>
   )

@@ -1,13 +1,18 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.db.models.functions import TruncMonth
+from django.db.models import Count
 from rest_framework import status, permissions
 from django.shortcuts import get_object_or_404
+from datetime import timedelta, datetime
+from collections import defaultdict 
 import json
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
+from django.utils.timezone import now
 from .models import TravelOrder, Signature, CustomUser, Fund, Transportation, EmployeePosition, Liquidation, EmployeeSignature, Itinerary
-from .serializers import TravelOrderSerializer, UserSerializer, FundSerializer, TransportationSerializer, EmployeePositionSerializer, LiquidationSerializer, ItinerarySerializer
-from .utils import get_approval_chain, get_next_head
+from .serializers import TravelOrderSerializer, UserSerializer, FundSerializer, TransportationSerializer, EmployeePositionSerializer, LiquidationSerializer, ItinerarySerializer, TravelOrderSimpleSerializer
+from .utils import get_approval_chain, get_next_head, build_status_map
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from django.conf import settings
@@ -296,21 +301,28 @@ class TravelOrderApprovalsView(APIView):
 
 
 class TravelOrderDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
         user = request.user
-        order = get_object_or_404(TravelOrder, pk=pk)
+        try:
+            order = TravelOrder.objects.get(pk=pk)
+        except TravelOrder.DoesNotExist:
+            return Response({'error': 'Not found'}, status=404)
 
-        if user.user_level == 'admin':
-            pass
-        elif user.user_level == 'head' and order.current_approver != user:
-            return Response({"error": "Not authorized to view this order."}, status=403)
-        elif user.user_level == 'employee' and not order.employees.filter(id=user.id).exists():
-            return Response({"error": "Not authorized to view this order."}, status=403)
+        # 👇 Only allow access if user is involved or has high-level access
+        if (
+            user in order.employees.all()
+            or user == order.prepared_by
+            or user == order.current_approver
+            or user.user_level in ['admin', 'head', 'director']
+        ):
+            # safe to return
+            serializer = TravelOrderSerializer(order)
+            return Response(serializer.data)
 
-        serializer = TravelOrderSerializer(order)
-        return Response(serializer.data)
+        return Response({'error': 'Not authorized to view this order.'}, status=403)
+
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -329,28 +341,8 @@ class ApproveTravelOrderView(APIView):
         signature = request.data.get('signature')
 
         # Map employee_type to status strings from your STATUS_CHOICES
-        status_map = {
-            'csc': {
-                'approve': 'The travel order has been approved by the CSC head',
-                'reject': 'The travel order has been rejected by the CSC head.',
-            },
-            'po': {
-                'approve': 'The travel order has been approved by the PO head',
-                'reject': 'The travel order has been rejected by the PO head',
-            },
-            'tmsd': {
-                'approve': 'The travel order has been approved by the TMSD chief',
-                'reject': 'The travel order has been rejected by the TMSD chief',
-            },
-            'afsd': {
-                'approve': 'The travel order has been approved by the AFSD chief',
-                'reject': 'The travel order has been rejected by the AFSD Chief',
-            },
-            'regional': {
-                'approve': 'The travel order has been approved by the Regional Director',
-                'reject': 'The travel order has been rejected by the Regional Director',
-            }
-        }
+        status_map = build_status_map()
+
 
         if decision == 'approve':
             filer = order.prepared_by
@@ -560,20 +552,39 @@ class SubmitLiquidationView(APIView):
     def post(self, request, pk):
         travel_order = get_object_or_404(TravelOrder, pk=pk)
 
-        # Check if already submitted
-        if hasattr(travel_order, 'liquidation'):
-            return Response({"error": "Liquidation already submitted."}, status=status.HTTP_400_BAD_REQUEST)
+        today = timezone.now().date()
+        date_to = travel_order.date_travel_to
 
-        # Inject travel_order ID into data
+        if today < date_to:
+            return Response({"error": "Liquidation can only be submitted after the travel ends."}, status=400)
+
+        if today > date_to + timedelta(days=90):
+            return Response({"error": "Liquidation must be submitted within 3 months after travel."}, status=400)
+
+        # Allow resubmission by deleting previous rejected liquidation
+        if hasattr(travel_order, 'liquidation'):
+            liquidation = travel_order.liquidation
+            if liquidation.status == 'Rejected':
+                # Allow resubmit
+                data = request.data.copy()
+                data['travel_order'] = travel_order.id
+                serializer = LiquidationSerializer(liquidation, data=data, partial=True)
+                if serializer.is_valid():
+                    serializer.save(resubmitted_at=timezone.now())
+                    return Response({"success": "Liquidation resubmitted."}, status=200)
+                return Response(serializer.errors, status=400)
+            else:
+                return Response({"error": "Liquidation already submitted."}, status=400)
+
+        # First submission
         data = request.data.copy()
         data['travel_order'] = travel_order.id
-
         serializer = LiquidationSerializer(data=data)
         if serializer.is_valid():
-            liquidation = serializer.save(uploaded_by=request.user)
-            return Response({"success": "Liquidation submitted."}, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            serializer.save(uploaded_by=request.user)
+            return Response({"success": "Liquidation submitted."}, status=201)
+        return Response(serializer.errors, status=400)
+
 
 
 
@@ -595,7 +606,10 @@ class BookkeeperReviewView(APIView):
         liquidation.reviewed_at_bookkeeper = timezone.now()
         liquidation.update_status()
 
-        return Response({'message': 'Bookkeeper review saved.'})
+        return Response({
+            'message': 'Returned to employee for revision.' if approve is False else 'Forwarded to accountant.'
+        })
+
 
 class AccountantReviewView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -615,7 +629,10 @@ class AccountantReviewView(APIView):
         liquidation.reviewed_at_accountant = timezone.now()
         liquidation.update_status()
 
-        return Response({'message': 'Accountant review saved.'})
+        return Response({
+            'message': 'Liquidation approved and ready for claim.' if approve else 'Rejected by accountant.'
+        })
+
     
 class LiquidationListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -626,22 +643,25 @@ class LiquidationListView(APIView):
         return Response(serializer.data)
     
 
-class EmployeeLiquiationView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+class TravelOrdersNeedingLiquidationView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
+        now = timezone.now().date()
 
-        if user.user_level == 'admin':
-            orders = TravelOrder.objects.filter(status="The travel order has been approved by the Regional Director")
-        else:
-            orders = TravelOrder.objects.filter(
-                employees=user,
-                status="The travel order has been approved by the Regional Director"
-            )
+        # 3 months ago
+        min_date = now - timedelta(days=90)
 
-        orders = orders.order_by('-submitted_at').distinct()
-        serializer = TravelOrderSerializer(orders, many=True)
+        # Filter:
+        travel_orders = TravelOrder.objects.filter(
+            prepared_by=user,
+            date_travel_to__lte=now,
+            date_travel_to__gte=min_date,
+            liquidation__isnull=True  # No liquidation yet
+        ).order_by("-date_travel_to")
+
+        serializer = TravelOrderSimpleSerializer(travel_orders, many=True)
         return Response(serializer.data)
     
 class LiquidationDetailView(APIView):
@@ -651,3 +671,197 @@ class LiquidationDetailView(APIView):
         liquidation = get_object_or_404(Liquidation, pk=pk)
         serializer = LiquidationSerializer(liquidation)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class EmployeeDashboardAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        today = now().date()
+        current_month = today.month
+        current_year = today.year
+
+        # Filter orders prepared by this user
+        queryset = TravelOrder.objects.filter(prepared_by=user)
+
+        total_orders = queryset.count()
+
+        approved_by_director = queryset.filter(
+            status='The travel order has been approved by the Regional Director'
+        ).count()
+
+        disapproved = queryset.filter(
+            status__in=[
+                'The travel order has been rejected by the CSC head.',
+                'The travel order has been rejected by the PO head',
+                'The travel order has been rejected by the TMSD chief',
+                'The travel order has been rejected by the AFSD Chief',
+                'The travel order has been rejected by the Regional Director'
+            ]
+        ).count()
+
+        upcoming_travels = queryset.filter(
+            date_travel_from__gte=today,
+            date_travel_from__month=current_month,
+            date_travel_from__year=current_year
+        ).values(
+            'destination',
+            'date_travel_from',
+            'date_travel_to',
+            'status'
+        ).order_by('date_travel_from')
+
+        return Response({
+            'total_orders': total_orders,
+            'approved_by_director': approved_by_director,
+            'disapproved': disapproved,
+            'upcoming_travels': list(upcoming_travels),
+        })
+    
+
+
+
+class AdminDashboard(APIView):
+    def get(self, request):
+        groups = {
+            "Pangasinan PO + CSCs": ['pangasinan_po', 'urdaneta_csc', 'sison_csc'],
+            "La Union PO + CSCs": ['launion_po', 'sudipen_csc', 'pugo_csc'],
+            "Ilocos Sur PO + CSCs": ['ilocossur_po', 'tagudin_csc', 'banayoyo_csc'],
+            "Ilocos Norte PO + CSCs": ['ilocosnorte_po', 'dingras_csc'],
+        }
+
+        # Generate list of last 12 months
+        now = datetime.now()
+        month_list = [
+            (now.replace(day=1) - timedelta(days=30 * i)).strftime("%Y-%m")
+            for i in reversed(range(12))
+        ]
+
+        result = defaultdict(lambda: {month: 0 for month in month_list})
+
+        # Travel orders grouped by submission month and employee type
+        orders = TravelOrder.objects.filter(submitted_at__isnull=False).annotate(
+            month=TruncMonth('submitted_at')
+        ).values('month', 'employees__employee_type').annotate(
+            count=Count('id')
+        ).order_by('month')
+
+        for entry in orders:
+            month = entry['month'].strftime('%Y-%m')
+            emp_type = entry['employees__employee_type']
+            for group_name, types in groups.items():
+                if emp_type in types:
+                    result[group_name][month] += entry['count']
+
+        return Response({
+            "labels": month_list,
+            "datasets": [
+                {
+                    "label": group,
+                    "data": [result[group][month] for month in month_list]
+                } for group in groups
+            ]
+        })
+
+class HeadDashboardAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        today = now().date()
+        start_of_month = today.replace(day=1)
+
+        own_orders = TravelOrder.objects.filter(prepared_by=user)
+        pending_approvals = TravelOrder.objects.filter(current_approver=user, status__icontains='placed')
+
+        approved_by_director = own_orders.filter(
+            status='The travel order has been approved by the Regional Director'
+        ).count()
+
+        rejected = own_orders.filter(
+            status__icontains='rejected'
+        ).count()
+
+        current_month_orders = own_orders.filter(
+            submitted_at__date__gte=start_of_month
+        ).values(
+            'destination', 'date_travel_from', 'date_travel_to', 'status'
+        )
+
+        data = {
+            'counts': {
+                'total': own_orders.count(),
+                'approved_by_director': approved_by_director,
+                'rejected': rejected,
+                'pending': pending_approvals.count(),
+            },
+            'travel_orders': list(current_month_orders)
+        }
+
+        return Response(data)
+    
+class DirectorDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.user_level != 'director':
+            return Response({'error': 'Unauthorized'}, status=403)
+
+        # === COUNT STATISTICS ===
+        pending = TravelOrder.objects.filter(current_approver=user).count()
+        approved = TravelOrder.objects.filter(
+            status='The travel order has been approved by the Regional Director',
+            rejected_by=None
+        ).count()
+        rejected = TravelOrder.objects.filter(
+            status='The travel order has been rejected by the Regional Director',
+            rejected_by=user
+        ).count()
+
+        # === MONTH LIST (12 MONTHS) ===
+        now = datetime.now()
+        month_list = [
+            (now.replace(day=1) - timedelta(days=30 * i)).strftime("%Y-%m")
+            for i in reversed(range(12))
+        ]
+
+        groups = {
+            "Pangasinan PO + CSCs": ['pangasinan_po', 'urdaneta_csc', 'sison_csc'],
+            "La Union PO + CSCs": ['launion_po', 'sudipen_csc', 'pugo_csc'],
+            "Ilocos Sur PO + CSCs": ['ilocossur_po', 'tagudin_csc', 'banayoyo_csc'],
+            "Ilocos Norte PO + CSCs": ['ilocosnorte_po', 'dingras_csc'],
+        }
+
+        result = defaultdict(lambda: {month: 0 for month in month_list})
+
+        orders = TravelOrder.objects.filter(submitted_at__isnull=False).annotate(
+            month=TruncMonth('submitted_at')
+        ).values('month', 'employees__employee_type').annotate(count=Count('id'))
+
+        for entry in orders:
+            month = entry['month'].strftime('%Y-%m')
+            emp_type = entry['employees__employee_type']
+            for group_name, types in groups.items():
+                if emp_type in types:
+                    result[group_name][month] += entry['count']
+
+        chart_data = {
+            "labels": month_list,
+            "datasets": [
+                {
+                    "label": group,
+                    "data": [result[group][month] for month in month_list]
+                } for group in groups
+            ]
+        }
+
+        return Response({
+            "stats": {
+                "pending": pending,
+                "approved": approved,
+                "rejected": rejected
+            },
+            "chart": chart_data
+        })

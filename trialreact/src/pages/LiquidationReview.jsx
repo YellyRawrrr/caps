@@ -3,17 +3,17 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "../api/axios";
 import toast from "react-hot-toast";
 import Layout from "../components/Layout";
+import { format, isAfter, addMonths, parseISO } from "date-fns";
 
-const BASE_URL = "http://localhost:8000"; // Adjust if using env vars
+const BASE_URL = "http://localhost:8000"; // Use env var in production
 
 export default function LiquidationReview() {
   const { id } = useParams();
   const [data, setData] = useState(null);
+  const [comment, setComment] = useState("");
   const navigate = useNavigate();
 
-  // Convert relative path to full URL
-  const fullURL = (path) =>
-    path?.startsWith("http") ? path : `${BASE_URL}${path}`;
+  const fullURL = (path) => (path?.startsWith("http") ? path : `${BASE_URL}${path}`);
 
   useEffect(() => {
     axios.get(`/liquidations/${id}/`)
@@ -24,36 +24,37 @@ export default function LiquidationReview() {
       });
   }, [id]);
 
-const handleDecision = async (decision) => {
-  try {
-    // You must get the logged-in user's role from context, auth, or backend
-    const userRole = localStorage.getItem('user_level'); // ← Replace with actual method if using Supabase/AuthContext
+  const handleDecision = async (decision) => {
+    const userRole = localStorage.getItem("user_level");
+    let endpoint = "";
 
-    let endpoint;
-    if (userRole === 'bookkeeper') {
+    if (userRole === "bookkeeper") {
       endpoint = `/liquidation/${id}/bookkeeper-review/`;
-    } else if (userRole === 'accountant') {
+    } else if (userRole === "accountant") {
       endpoint = `/liquidation/${id}/accountant-review/`;
     } else {
       toast.error("Unauthorized reviewer");
       return;
     }
 
-    await axios.patch(endpoint, {
-      approve: decision === "approved", // Backend expects a boolean
-      comment: "", // Optionally allow a comment input
-    });
-
-    toast.success(`Marked as ${decision}`);
-    navigate("/liquidation");
-  } catch (err) {
-    console.error("Review error", err);
-    toast.error("Action failed");
-  }
-};
-
+    try {
+      await axios.patch(endpoint, {
+        approve: decision === "approved",
+        comment,
+      });
+      toast.success(`Marked as ${decision}`);
+      navigate("/liquidation");
+    } catch (err) {
+      console.error("Review error", err);
+      toast.error("Action failed");
+    }
+  };
 
   if (!data) return <div className="p-6">Loading...</div>;
+
+  const travelDateStr = data?.travel_order?.date_travel_to;
+  const travelDate = travelDateStr ? parseISO(travelDateStr) : null;
+  const isTooEarly = travelDate ? isAfter(new Date(), addMonths(travelDate, 3)) === false : false;
 
   return (
     <Layout>
@@ -62,54 +63,87 @@ const handleDecision = async (decision) => {
           Liquidation #{data.id}
         </h2>
 
+        {isTooEarly && (
+          <p className="text-red-600 text-sm mb-4">
+            ⚠️ Liquidation is only valid within 3 months after the travel end date.
+          </p>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-base mb-6">
           <div>
-            <span className="font-medium">Travel Order #:</span> {data.travel_order?.travel_order_number || "N/A"}
+            <span className="font-medium">Travel Order #:</span>{" "}
+            {data.travel_order?.travel_order_number || "N/A"}
           </div>
           <div>
-            <span className="font-medium">Submitted by:</span> {data.uploaded_by?.prepared_by || "N/A"}
+            <span className="font-medium">Submitted by:</span>{" "}
+            {data.uploaded_by?.username || "N/A"}
           </div>
           <div>
-            <span className="font-medium">Status:</span> {data.status}
+            <span className="font-medium">Status:</span>{" "}
+            {data.status || "N/A"}
+          </div>
+          <div>
+            <span className="font-medium">Travel End Date:</span>{" "}
+            {travelDate ? format(travelDate, "PPP") : "N/A"}
           </div>
         </div>
 
         <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-700 mb-2"> Attached Documents</h3>
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">
+            Attached Documents
+          </h3>
           <ul className="space-y-2 list-disc pl-5 text-blue-600">
             <li>
-              <a
-                href={fullURL(data.certificate_of_travel)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:underline"
-              >
-                 Certificate of Travel Completed
+              <a href={fullURL(data.certificate_of_travel)} target="_blank" rel="noopener noreferrer">
+                Certificate of Travel Completed
               </a>
             </li>
             <li>
-              <a
-                href={fullURL(data.certificate_of_appearance)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:underline"
-              >
-                 Certificate of Appearance
+              <a href={fullURL(data.certificate_of_appearance)} target="_blank" rel="noopener noreferrer">
+                Certificate of Appearance
               </a>
             </li>
             <li>
-              <a
-                href={fullURL(data.after_travel_report)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:underline"
-              >
-                 After Travel Report
+              <a href={fullURL(data.after_travel_report)} target="_blank" rel="noopener noreferrer">
+                After Travel Report
               </a>
             </li>
           </ul>
         </div>
 
+        {/* Review History */}
+        {(data.reviewed_by_bookkeeper || data.reviewed_by_accountant) && (
+          <div className="mb-4 text-sm text-gray-700 space-y-2">
+            {data.reviewed_by_bookkeeper && (
+              <p>
+                <strong>Bookkeeper:</strong>{" "}
+                {data.reviewed_by_bookkeeper.username} (
+                {data.bookkeeper_comment || "No comment"})
+              </p>
+            )}
+            {data.reviewed_by_accountant && (
+              <p>
+                <strong>Accountant:</strong>{" "}
+                {data.reviewed_by_accountant.username} (
+                {data.accountant_comment || "No comment"})
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Review Comment Box */}
+        <div className="mb-4">
+          <label className="block font-medium mb-1">Comment (optional):</label>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={3}
+            className="w-full border rounded-lg p-2 text-sm"
+            placeholder="Leave a note about this decision..."
+          />
+        </div>
+
+        {/* Approve/Reject Buttons */}
         <div className="flex space-x-4 pt-4">
           <button
             onClick={() => handleDecision("approved")}

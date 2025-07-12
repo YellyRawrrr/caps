@@ -382,7 +382,7 @@ const handleRestorePosition = async (id) => {
                               else if (section.title === 'Transportation') handleArchiveTransportation(item.id);
                               else if (section.title === 'Employee Positions') handleArchivePosition(item.id);
                             }}
-                            className="inline-flex items-center bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-medium px-3 py-1.5 rounded-md transition"
+                            className="inline-flex items-center bg-red-600 hover:bg-red-700 text-white text-xs font-medium px-3 py-1.5 rounded-md transition"
                           >
                             Archive
                           </button>
@@ -433,7 +433,7 @@ const handleRestorePosition = async (id) => {
                   <td className="px-6 py-3 text-right">
                     <button
                       onClick={() => handleRestoreFund(item.id)}
-                      className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white text-xs font-medium px-3 py-1.5 rounded-md transition"
+                      className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-md transition"
                     >
                       Restore
                     </button>

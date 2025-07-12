@@ -41,36 +41,34 @@ const resubmit = async (id) => {
     <Layout>
       <div className="max-w-6xl mx-auto p-6 mt-10 bg-white rounded-lg shadow-md">
         {/* Tabs */}
-        <div className="mb-6 border-b">
-  <nav className="flex space-x-6 text-sm font-medium text-gray-500">
-    <button
-      onClick={() => navigate('/travel-order')}
-      className="pb-2 border-b-2 border-transparent hover:text-blue-600 hover:border-blue-500"
-    >
-      My Travels
-    </button>
-    <button className="pb-2 border-b-2 border-blue-600 text-blue-600">
-      Rejected Orders
-    </button>
-  </nav>
-</div>
+        <div className="border-b border-gray-200 mb-6">
+          <nav className="flex space-x-6 text-sm font-medium text-gray-500">
+            <button
+              onClick={() => navigate('/travel-order')}
+              className="pb-2 border-b-2 border-transparent hover:text-blue-600 hover:border-blue-500"
+            >
+              My Travels
+            </button>
+            <button
+              className="pb-2 border-b-2 border-blue-600 text-blue-600"
+            >
+              Rejected Orders
+            </button>
+          </nav>
+        </div>
 
 
-        {/* Page Title */}
-        <h2 className="text-2xl font-bold text-blue-800 mb-6">
-          Rejected Travel Orders
-        </h2>
 
         {/* Orders Table */}
         {orders.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-100">
+              <thead className="bg-blue-800  ">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-600">Destination</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-600">Purpose</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-600">Rejection Comment</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-600">Action</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-white">Destination</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-white">Purpose</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-white">Rejection Comment</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-white">Action</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
@@ -84,7 +82,7 @@ const resubmit = async (id) => {
                     <td className="px-6 py-4">
                       <button
                         onClick={() => resubmit(order.id)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md text-sm font-medium"
+                        className="bg-blue-800 hover:bg-blue-700 text-white py-2 px-4 rounded-md text-sm font-medium"
                       >
                         Resubmit
                       </button>

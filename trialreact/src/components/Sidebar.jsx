@@ -33,7 +33,7 @@ const Sidebar = ({ fetchOrders }) => {
   }, [user]);
 
   return (
-    <aside className="w-72 bg-white shadow-lg p-6 h-screen flex flex-col justify-between">
+    <aside className="w-68 bg-white  p-6 h-screen flex flex-col justify-between">
       <div>
         {user && (user.user_level === 'employee' || user.user_level === 'head') && (
           <button

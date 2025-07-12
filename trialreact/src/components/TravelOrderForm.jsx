@@ -2,19 +2,12 @@ import { useEffect, useState, useRef } from 'react';
 import axios from '../api/axios';
 import toast from 'react-hot-toast';
 import SignatureCanvas from 'react-signature-canvas';
+import IdentificationStep from './TravelOrderFormSteps/IdentificationStep';
+import EmployeeStep from './TravelOrderFormSteps/EmployeeStep';
+import ItineraryStep from './TravelOrderFormSteps/ItineraryStep';
+import ValidationStep from './TravelOrderFormSteps/ValidationStep';
 
-// Type of user choices for dropdown
-const TYPE_OF_USER_CHOICES = [
-  'Community Service Center Employee',
-  'Provincial Office Employee',
-  'Regional Office-TMSD Employee',
-  'Regional Office-AFSD Employee',
-  'Regional Office-LU Employee',
-  'CSC Head',
-  'PO Head',
-  'TMSD Chief',
-  'AFSD Chief',
-];
+
 
 export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
   if (!isOpen) return null;
@@ -31,18 +24,17 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
   // Form state
   const [activeTab, setActiveTab] = useState('identification');
   const [formData, setFormData] = useState({
-    destination: '',
-    purpose: '',
-    specific_role: '',
-    date_travel_from: '',
-    date_travel_to: '',
-    mode_of_filing: '',
-    date_of_filing: new Date().toISOString().split('T')[0],
-    fund_cluster: '',
-    prepared_by: '',
-    employee_position: '',
-    type_of_user: '',
-  });
+  destination: '',
+  purpose: '',
+  specific_role: '',
+  date_travel_from: '',
+  date_travel_to: '',
+  mode_of_filing: '',
+  date_of_filing: new Date().toISOString().split('T')[0],
+  fund_cluster: '',
+  prepared_by: '',
+});
+
 
   const [itineraryList, setItineraryList] = useState([
     {
@@ -61,8 +53,7 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
   const [transportationList, setTransportationList] = useState([]); // ← ADD THIS
   const sigPadRef = useRef();
   const [signatureData, setSignatureData] = useState(null);
-  const [employeePositions, setEmployeePositions] = useState([]);
-  const [preparedByPositionName, setPreparedByPositionName] = useState('');
+
   const [minDateFrom, setMinDateFrom] = useState('');
   const [minDateTo, setMinDateTo] = useState('');
   const [employeeList, setEmployeeList] = useState([]);
@@ -77,6 +68,12 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
   const [preparedBySearch, setPreparedBySearch] = useState('');
   const [showPreparedByDropdown, setShowPreparedByDropdown] = useState(false);
   const preparedByInputRef = useRef(null);
+  const submitBtnRef = useRef();
+  const [preparedByPositionName, setPreparedByPositionName] = useState('');
+  const [preparedByUserType, setPreparedByUserType] = useState('');
+
+  const [submitClicked, setSubmitClicked] = useState(false);
+
 
   const getFutureDate = (days) => {
     const date = new Date();
@@ -84,82 +81,46 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
     return date.toISOString().split('T')[0];
   };
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const [empRes, userRes, fundRes, transRes, posRes] = await Promise.all([
-          axios.get('employees/'),
-          axios.get('user-info/'),
-          axios.get('funds/'),
-          axios.get('transportation/'),
-          axios.get('employee-position/'),
-        ]);
+useEffect(() => {
+  const fetchInitialData = async () => {
+    try {
+      const [empRes, userRes, fundRes, transRes] = await Promise.all([
+        axios.get('employees/'),
+        axios.get('user-info/'),
+        axios.get('funds/'),
+        axios.get('transportation/'),
+      ]);
 
-        const nonExcludedEmployees = empRes.data.filter(
-          emp => !['admin', 'bookkeeper', 'accountant'].includes(emp.user_level)
-        );
-        setEmployeeList(nonExcludedEmployees);
-
-        setCurrentUserId(userRes.data.id);
-        setSelectedEmployees([userRes.data.id.toString()]);
-        setEmployeeSearch([`${userRes.data.first_name} ${userRes.data.last_name}`]);
-        setShowDropdown([false]);
-        setFundList(fundRes.data);
-        setTransportationList(transRes.data);
-        setEmployeePositions(posRes.data);
-
-        const preparedEmp = nonExcludedEmployees.find(e => e.id === userRes.data.id);
-
-
-        const position = preparedEmp?.employee_position
-          ? posRes.data.find((p) => p.id === preparedEmp.employee_position)
-          : null;
-
-        setPreparedByPositionName(position?.position_name || '');
-
-        setFormData((prev) => ({
-          ...prev,
-          prepared_by: userRes.data.id.toString(),
-          employee_position: preparedEmp?.employee_position?.toString() || '',
-        }));
-      } catch (err) {
-        console.error('Failed to fetch data:', err);
-      }
-    };
-
-    fetchInitialData();
-  }, []);
-
-
-  useEffect(() => {
-    const fetchPreparedByPosition = async () => {
-      if (!formData.prepared_by) {
-        setPreparedByPositionName('');
-        return;
-      }
-
-      const emp = employeeList.find(
-        (e) => e.id === parseInt(formData.prepared_by)
+      const nonExcludedEmployees = empRes.data.filter(
+        emp => !['admin', 'bookkeeper', 'accountant'].includes(emp.user_level)
       );
+      setEmployeeList(nonExcludedEmployees);
 
-      if (emp?.employee_position) {
-        const pos = employeePositions.find(
-          (p) => p.id === emp.employee_position
-        );
-        setPreparedByPositionName(pos?.position_name || '');
+      setCurrentUserId(userRes.data.id);
+      setSelectedEmployees([userRes.data.id.toString()]);
+      setEmployeeSearch([`${userRes.data.first_name} ${userRes.data.last_name}`]);
+      setShowDropdown([false]);
+      setFundList(fundRes.data);
+      setTransportationList(transRes.data);
 
-        // Optional: set this if sending to backend
-        // setFormData((prev) => ({
-        //   ...prev,
-        //   employee_position: emp.employee_position?.toString() || '',
-        // }));
-      } else {
-        setPreparedByPositionName('');
-      }
-    };
+      const preparedEmp = nonExcludedEmployees.find(e => e.id === userRes.data.id);
+      setPreparedByPositionName(preparedEmp?.employee_position_name || ''); // Optional: placeholder
 
-    fetchPreparedByPosition();
-  }, [formData.prepared_by, employeeList, employeePositions]);
+      setFormData((prev) => ({
+        ...prev,
+        prepared_by: userRes.data.id.toString(),
+      }));
+    } catch (err) {
+      console.error('Failed to fetch data:', err);
+    }
+  };
+
+  fetchInitialData();
+}, []);
+
+
+
+
 
 
 
@@ -267,50 +228,50 @@ const availableOptions = (index) => {
     setItineraryList(updated);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault(); // always prevent default
+  if (!submitClicked) return; // only allow if submit button was clicked
+  setSubmitClicked(false); // reset for next submit
 
-let signatureBase64 = null;
-if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
-  signatureBase64 = sigPadRef.current.getCanvas().toDataURL('image/png');
-}
-setSignatureData(signatureBase64); // <-- Add this
+  let signatureBase64 = null;
+  if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
+    signatureBase64 = sigPadRef.current.getCanvas().toDataURL('image/png');
+  }
 
+  const validEmployees = selectedEmployees.filter((id) => !!id);
+  const payload = {
+    ...formData,
+    fund: formData.fund ? Number(formData.fund) : null,
+    prepared_by: formData.prepared_by ? Number(formData.prepared_by) : null,
+    prepared_by_position_name: preparedByPositionName,
+    employees: [currentUserId, ...validEmployees].map(Number),
+    number_of_employees: validEmployees.length + 1,
+    itinerary: itineraryList.map((item) => ({
+      ...item,
+      transportation_allowance: parseFloat(item.transportation_allowance) || 0,
+      per_diem: parseFloat(item.per_diem) || 0,
+      other_expense: parseFloat(item.other_expense) || 0,
+      total_amount: parseFloat(item.total_amount) || 0,
+    })),
+    signature: signatureBase64,
+  };
 
-    const validEmployees = selectedEmployees.filter((id) => !!id);
-const payload = {
-  ...formData,
-  fund: formData.fund ? Number(formData.fund) : null,
-  prepared_by: formData.prepared_by ? Number(formData.prepared_by) : null,
-  // Optional: include this if backend accepts it
-  // employee_position: formData.employee_position ? Number(formData.employee_position) : null,
-  employees: [currentUserId, ...validEmployees].map(Number),
-  number_of_employees: validEmployees.length + 1,
-  itinerary: itineraryList.map((item) => ({
-    ...item,
-    transportation_allowance: parseFloat(item.transportation_allowance) || 0,
-    per_diem: parseFloat(item.per_diem) || 0,
-    other_expense: parseFloat(item.other_expense) || 0,
-    total_amount: parseFloat(item.total_amount) || 0,
-  })),
-  signature: signatureData, // <-- include signature here
+  try {
+    const response = await axios.post('travel-orders/', payload);
+    if ([200, 201].includes(response.status)) {
+      toast.success('Travel order submitted!');
+      onClose();
+      await fetchOrders?.();
+    } else {
+      toast.error('Submission failed. Please try again.');
+    }
+  } catch (err) {
+    console.error('Submission error:', err.response?.data || err.message);
+    toast.error('Submission failed. Please check your form.');
+  }
 };
 
 
-    try {
-      const response = await axios.post('travel-orders/', payload);
-      if ([200, 201].includes(response.status)) {
-        toast.success('Travel order submitted!');
-        onClose();
-        await fetchOrders?.();
-      } else {
-        toast.error('Submission failed. Please try again.');
-      }
-    } catch (err) {
-      console.error('Submission error:', err.response?.data || err.message);
-      toast.error('Submission failed. Please check your form.');
-    }
-  };
 
   const goToNextTab = () => {
     if (!isCurrentTabValid()) {
@@ -394,8 +355,8 @@ const isCurrentTabValid = () => {
         </div>
 
         <form onSubmit={handleSubmit}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && activeTab !== 'validation') {
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
                   e.preventDefault();
                 }
               }}
@@ -403,498 +364,67 @@ const isCurrentTabValid = () => {
             >
           {/* Identification Step */}
           {activeTab === 'identification' && (
-            <div className="mb-4">
-              <label className="block mb-1 text-sm font-medium text-gray-700">
-                Mode of Filing
-              </label>
-              <div className="flex gap-4">
-                {['IMMEDIATE', 'NOT_IMMEDIATE'].map((mode) => (
-                  <label
-                    key={mode}
-                    className="flex items-center text-sm text-gray-700"
-                  >
-                    <input
-                      type="radio"
-                      name="mode_of_filing"
-                      value={mode}
-                      checked={formData.mode_of_filing === mode}
-                      onChange={handleChange}
-                      className="mr-2"
-                    />
-                    {mode.replace('_', ' ')}
-                  </label>
-                ))}
-              </div>
-            </div>
+            <IdentificationStep
+              formData={formData}
+              handleChange={handleChange}
+            />
           )}
 
           {/* Employee Step */}
           {activeTab === 'employee' && (
-            <>
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Date of Filing
-                </label>
-                <input
-                  type="date"
-                  name="date_of_filing"
-                  value={formData.date_of_filing}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 cursor-not-allowed"
-                />
-              </div>
-
-              <div className="mb-4">
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Fund Cluster
-                </label>
-                <div className="flex gap-4">
-                  {['01_RF', '07_TF'].map((cluster) => (
-                    <label
-                      key={cluster}
-                      className="flex items-center text-sm text-gray-700"
-                    >
-                      <input
-                        type="radio"
-                        name="fund_cluster"
-                        value={cluster}
-                        checked={formData.fund_cluster === cluster}
-                        onChange={handleChange}
-                        className="mr-2"
-                      />
-                      {cluster}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <label className="block mb-1 text-sm font-medium text-gray-700">
-                Employee(s)
-              </label>
-              {selectedEmployees.map((emp, index) => (
-                <div key={index} className="flex gap-2 mb-2 relative">
-                  <div className="flex-1">
-                    <input
-                      ref={el => inputRefs.current[index] = el}
-                      type="text"
-                      value={
-                        emp
-                          ? (() => {
-                              const found = employeeList.find(e => e.id?.toString() === emp);
-                              return found ? `${found.first_name} ${found.last_name}` : '';
-                            })()
-                          : (employeeSearch[index] || '')
-                      }
-                      onChange={e => {
-                        const val = e.target.value;
-                        setEmployeeSearch(prev => {
-                          const arr = [...prev];
-                          arr[index] = val;
-                          return arr;
-                        });
-                        setShowDropdown(prev => {
-                          const arr = [...prev];
-                          arr[index] = true;
-                          return arr;
-                        });
-                        // Clear selection if user types
-                        handleEmployeeChange(index, '');
-                      }}
-                      onFocus={() => setShowDropdown(prev => {
-                        const arr = [...prev];
-                        arr[index] = true;
-                        return arr;
-                      })}
-                      onBlur={() => setTimeout(() => setShowDropdown(prev => {
-                        const arr = [...prev];
-                        arr[index] = false;
-                        return arr;
-                      }), 150)}
-                      placeholder="-- Select Employee --"
-                      className="w-full px-3 py-2 border border-gray-300 rounded"
-                    />
-                    {showDropdown[index] && filteredEmployeeOptions(index, employeeSearch, availableOptions(index)).length > 0 && (
-                      <ul className="absolute z-10 bg-white border border-gray-300 rounded shadow w-full mt-1 max-h-40 overflow-y-auto">
-                        {filteredEmployeeOptions(index, employeeSearch, availableOptions(index)).map(opt => (
-                          <li
-                            key={opt.id}
-                            className="px-3 py-2 hover:bg-blue-100 cursor-pointer"
-                            onMouseDown={() => {
-                              handleEmployeeChange(index, opt.id.toString());
-                              setEmployeeSearch(prev => {
-                                const arr = [...prev];
-                                arr[index] = `${opt.first_name} ${opt.last_name}`;
-                                return arr;
-                              });
-                              setShowDropdown(prev => {
-                                const arr = [...prev];
-                                arr[index] = false;
-                                return arr;
-                              });
-                              // Focus next input if adding
-                              if (index === selectedEmployees.length - 1 && inputRefs.current[index + 1]) {
-                                inputRefs.current[index + 1].focus();
-                              }
-                            }}
-                          >
-                            {opt.first_name} {opt.last_name}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  {selectedEmployees.length > 1 && index !== 0 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveEmployee(index)}
-                      className="text-red-500 text-sm flex items-center gap-1 px-2 py-1 rounded hover:bg-red-100 transition"
-                      title="Remove employee"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      <span className="sr-only">Remove</span>
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={handleAddEmployee}
-                className="text-blue-600 hover:underline text-sm mt-1"
-              >
-                + Add another employee
-              </button>
-
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Number of employee(s)
-                </label>
-                <input
-                  type="number"
-                  readOnly
-                  value={selectedEmployees.filter((emp) => !!emp).length}
-                  className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-600"
-                />
-              </div>
-
-              {[
-                {
-                  label: 'Date of Official Travel(From)',
-                  name: 'date_travel_from',
-                  type: 'date',
-                  min: minDateFrom,
-                },
-                {
-                  label: 'Date of Official Travel(To)',
-                  name: 'date_travel_to',
-                  type: 'date',
-                  min: minDateTo,
-                },
-                { label: 'Destination', name: 'destination', type: 'text' },
-              ].map(({ label, name, type, min }) => (
-                <div key={name}>
-                  <label className="block mb-1 text-sm font-medium text-gray-700">
-                    {label}
-                  </label>
-                  <input
-                    type={type}
-                    name={name}
-                    value={formData[name]}
-                    onChange={handleChange}
-                    required
-                    min={min}
-                    className="w-full px-3 py-2 border border-gray-300 rounded"
-                  />
-                </div>
-              ))}
-
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Purpose
-                </label>
-                <textarea
-                  name="purpose"
-                  value={formData.purpose}
-                  onChange={handleChange}
-                  rows="3"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded"
-                />
-              </div>
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">
-                  Specific Role
-                </label>
-                <textarea
-                  name="specific_role"
-                  value={formData.specific_role}
-                  onChange={handleChange}
-                  rows="3"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block mb-1 text-sm font-medium text-gray-700">Fund Source</label>
-                <select
-                  name="fund"
-                  value={formData.fund}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded"
-                  required
-                >
-                  <option value="">-- Select Fund --</option>
-                  {fundList.map((fund) => (
-                    <option key={fund.id} value={fund.id}>
-                      {fund.source_of_fund}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </>
+            <EmployeeStep
+              formData={formData}
+              handleChange={handleChange}
+              fundList={fundList}
+              selectedEmployees={selectedEmployees}
+              employeeList={employeeList}
+              employeeSearch={employeeSearch}
+              showDropdown={showDropdown}
+              inputRefs={inputRefs}
+              handleEmployeeChange={handleEmployeeChange}
+              handleAddEmployee={handleAddEmployee}
+              handleRemoveEmployee={handleRemoveEmployee}
+              filteredEmployeeOptions={filteredEmployeeOptions}
+              availableOptions={availableOptions}
+              currentUserId={currentUserId}
+              setEmployeeSearch={setEmployeeSearch}
+              setShowDropdown={setShowDropdown}
+              minDateFrom={minDateFrom}
+              minDateTo={minDateTo}
+            />
           )}
 
           {/* Itinerary Step */}
           {activeTab === 'itinerary' && (
-            <div>
-              {itineraryList.map((entry, index) => (
-                <div key={index} className="mb-4 border p-4 rounded">
-                  <h4 className="font-medium text-sm mb-2">Itinerary #{index + 1}</h4>
-
-                  {/* Date */}
-                  <div className="mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Date</label>
-                    <input
-                      type="date"
-                      name="itinerary_date"
-                      value={entry.itinerary_date}
-                      onChange={(e) => handleItineraryChange(index, e)}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
-                    />
-                  </div>
-
-                  {/* Departure Time */}
-                  <div className="mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Departure Time</label>
-                    <input
-                      type="time"
-                      name="departure_time"
-                      value={entry.departure_time}
-                      onChange={(e) => handleItineraryChange(index, e)}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
-                    />
-                  </div>
-
-                  {/* Arrival Time */}
-                  <div className="mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Arrival Time</label>
-                    <input
-                      type="time"
-                      name="arrival_time"
-                      value={entry.arrival_time}
-                      onChange={(e) => handleItineraryChange(index, e)}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
-                    />
-                  </div>
-
-                  {/* 🚗 Means of Transportation */}
-                  <div className="mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Means of Transportation</label>
-                    <select
-                      name="transportation"
-                      value={entry.transportation || ''}
-                      onChange={(e) => handleItineraryChange(index, e)}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
-                      required
-                    >
-                      <option value="">-- Select Transportation --</option>
-                      {transportationList.map((transportation) => (
-                        <option key={transportation.id} value={transportation.id}>
-                          {transportation.means_of_transportation}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Transportation Allowance */}
-                  <div className="mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Transportation Allowance</label>
-                    <input
-                      type="number"
-                      name="transportation_allowance"
-                      value={entry.transportation_allowance}
-                      onChange={(e) => handleItineraryChange(index, e)}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
-                    />
-                  </div>
-
-                  {/* Per Diem */}
-                  <div className="mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Per Diem</label>
-                    <input
-                      type="number"
-                      name="per_diem"
-                      value={entry.per_diem}
-                      onChange={(e) => handleItineraryChange(index, e)}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
-                    />
-                  </div>
-
-                  {/* Other Expense */}
-                  <div className="mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Other Expense</label>
-                    <input
-                      type="number"
-                      name="other_expense"
-                      value={entry.other_expense}
-                      onChange={(e) => handleItineraryChange(index, e)}
-                      className="w-full px-2 py-1 border border-gray-300 rounded"
-                    />
-                  </div>
-
-                  {/* Total Amount */}
-                  <div className="mb-2">
-                    <label className="block text-sm font-medium text-gray-700">Total Amount</label>
-                    <input
-                      type="number"
-                      name="total_amount"
-                      value={entry.total_amount}
-                      readOnly
-                      className="w-full px-2 py-1 border border-gray-300 rounded bg-gray-100"
-                    />
-                  </div>
-
-                  {itineraryList.length > 1 && (
-                    <button
-                      onClick={() => removeItinerary(index)}
-                      type="button"
-                      className="text-red-500 text-sm mt-1"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              ))}
-
-              <button
-                onClick={addItinerary}
-                type="button"
-                className="text-blue-600 text-sm mt-2"
-              >
-                + Add Itinerary
-              </button>
-            </div>
+            <ItineraryStep
+              itineraryList={itineraryList}
+              handleItineraryChange={handleItineraryChange}
+              addItinerary={addItinerary}
+              removeItinerary={removeItinerary}
+              transportationList={transportationList}
+            />
           )}
 
           {/* Validation Step */}
           {activeTab === 'validation' && (
-            <>
-              <div className="mb-4 relative">
-                <label className="block mb-1 text-sm font-medium text-gray-700">Prepared By</label>
-                <input
-                  ref={preparedByInputRef}
-                  type="text"
-                  value={(() => {
-                    const found = employeeList.find(e => e.id?.toString() === formData.prepared_by);
-                    return found ? `${found.first_name} ${found.last_name}` : preparedBySearch;
-                  })()}
-                  onChange={e => {
-                    setPreparedBySearch(e.target.value);
-                    setShowPreparedByDropdown(true);
-                    // Clear selection if user types
-                    setFormData(prev => ({ ...prev, prepared_by: '' }));
-                  }}
-                  onFocus={() => setShowPreparedByDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowPreparedByDropdown(false), 150)}
-                  placeholder="-- Select Employee --"
-                  className="w-full px-3 py-2 border border-gray-300 rounded"
-                />
-                {showPreparedByDropdown && filteredEmployeeOptions(0, [preparedBySearch], employeeList).length > 0 && (
-                  <ul className="absolute z-10 bg-white border border-gray-300 rounded shadow w-full mt-1 max-h-40 overflow-y-auto">
-                    {filteredEmployeeOptions(0, [preparedBySearch], employeeList).map(opt => (
-                      <li
-                        key={opt.id}
-                        className="px-3 py-2 hover:bg-blue-100 cursor-pointer"
-                        onMouseDown={() => {
-                          setFormData(prev => ({ ...prev, prepared_by: opt.id.toString() }));
-                          setPreparedBySearch(`${opt.first_name} ${opt.last_name}`);
-                          setShowPreparedByDropdown(false);
-                        }}
-                      >
-                        {opt.first_name} {opt.last_name}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div className="mb-4">
-              <label className="block mb-1 text-sm font-medium text-gray-700">
-                Employee Position
-              </label>
-              <select
-                name="employee_position"
-                value={formData.employee_position || ''}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded"
-                required
-              >
-                <option value="">-- Select Position --</option>
-                {employeePositions.map((pos) => (
-                  <option key={pos.id} value={pos.id}>
-                    {pos.position_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-4">
-            <label className="block mb-1 text-sm font-medium text-gray-700">Type of User</label>
-            <select
-              name="type_of_user"
-              value={formData.type_of_user}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded"
-              required
-            >
-              <option value="">-- Select Type of User --</option>
-              {TYPE_OF_USER_CHOICES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="mb-4">
-  <label className="block mb-1 text-sm font-medium text-gray-700">
-    Signature
-  </label>
-  <div className="border border-gray-300 rounded bg-gray-50 overflow-x-auto">
-    <SignatureCanvas
-      ref={sigPadRef}
-      canvasProps={{
-        width: 500,
-        height: 150,
-        className: 'block rounded'
-      }}
-    />
-  </div>
-  <div className="flex gap-2 mt-2">
-  <button
-    type="button"
-    onClick={() => {
-      sigPadRef.current.clear();
-      setSignatureData(null);
-    }}
-    className="bg-gray-300 px-3 py-1 rounded text-sm"
-  >
-    Clear
-  </button>
-</div>
-
-</div>
-
-
-            </>
+            <ValidationStep
+              formData={formData}
+              preparedByInputRef={preparedByInputRef}
+              employeeList={employeeList}
+              preparedBySearch={preparedBySearch}
+              setPreparedBySearch={setPreparedBySearch}
+              showPreparedByDropdown={showPreparedByDropdown}
+              setShowPreparedByDropdown={setShowPreparedByDropdown}
+              filteredEmployeeOptions={filteredEmployeeOptions}
+              setFormData={setFormData}
+              signatureData={signatureData}
+              sigPadRef={sigPadRef}
+              setSignatureData={setSignatureData}
+              preparedByPositionName={preparedByPositionName} // ✅
+              setPreparedByPositionName={setPreparedByPositionName} // ✅
+                preparedByUserType={preparedByUserType}
+  setPreparedByUserType={setPreparedByUserType} 
+            />
           )}
 
 
@@ -919,6 +449,8 @@ const isCurrentTabValid = () => {
               ) : (
                 <button
                   type="submit"
+                  ref={submitBtnRef}
+                  onClick={() => setSubmitClicked(true)}
                   className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-1 rounded"
                 >
                   Submit Travel Order

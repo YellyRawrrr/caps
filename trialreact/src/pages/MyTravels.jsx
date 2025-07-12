@@ -56,12 +56,12 @@ export default function MyTravels() {
         
         <div className="overflow-x-auto bg-white shadow rounded-lg">
           <table className="min-w-full table-auto border-collapse">
-            <thead className="bg-gray-100">
+            <thead className="bg-blue-800 ">
               <tr>
                 {['Travel Order Number','Destination', 'Purpose', 'Departure', 'Return', 'Status', 'Actions'].map((header) => (
                   <th
                     key={header}
-                    className={`px-6 py-3 text-sm font-medium text-gray-600 border-b ${header === 'Actions' ? 'text-right' : 'text-left'}`}
+                    className={`px-6 py-3 text-sm font-medium text-gray-50 border-b ${header === 'Actions' ? 'text-right' : 'text-left'}`}
                   >
                     {header}
                   </th>

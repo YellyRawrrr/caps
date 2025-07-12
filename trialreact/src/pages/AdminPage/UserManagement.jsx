@@ -51,6 +51,8 @@ const UserManagement = () => {
 
   return (
     <Layout>
+      <div className="max-w-6xl mx-auto p-6 mt-10 bg-white rounded-lg shadow-md">
+      <div className="container mx-auto p-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-semibold text-gray-800">User Management</h1>
@@ -60,17 +62,17 @@ const UserManagement = () => {
         </div>
 
       <AddUser isOpen={isAddModalOpen} onClose={closeAddModal} fetchUsers={fetchUsers} />
-      <EditUser isOpen={isEditModalOpen} onClose={closeEditModal} user={selectedUser} />
+      <EditUser isOpen={isEditModalOpen} onClose={closeEditModal} user={selectedUser} fetchUsers={fetchUsers} />
 
 
         <div className="overflow-x-auto bg-white shadow-md rounded-lg">
           <table className="min-w-full table-auto">
-            <thead className="bg-gray-100">
+            <thead className="bg-blue-800">
               <tr>
                 {['Firstname', 'Lastname', 'Username', 'User Level', 'Employee Type', 'Actions'].map((header) => (
                   <th
                     key={header}
-                    className={`px-6 py-3 text-sm font-semibold text-gray-700 border-b ${
+                    className={`px-6 py-3 text-sm font-semibold text-gray-50 border-b ${
                       header === 'Actions' ? 'text-right' : 'text-left'
                     }`}
                   >
@@ -136,6 +138,8 @@ const UserManagement = () => {
             </div>
           )}
         </div>
+      </div>
+      </div>
       </div>
     </Layout>
   );

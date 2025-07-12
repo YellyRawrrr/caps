@@ -1,19 +1,19 @@
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { parseISO, isAfter, addMonths } from "date-fns";
 import Layout from "../components/Layout";
-import axios from '../api/axios';
+import axios from "../api/axios";
 import toast from "react-hot-toast";
 
 export default function LiquidationForm() {
-  const { id: orderId } = useParams();  // ✅ now orderId will be correctly assigned
+  const { id: orderId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
 
   const [order, setOrder] = useState(location.state?.order || null);
   const [loading, setLoading] = useState(!order);
-
   const [formData, setFormData] = useState({
-    certificate_of_travel: null, 
+    certificate_of_travel: null,
     certificate_of_appearance: null,
     after_travel_report: null,
   });
@@ -38,38 +38,45 @@ export default function LiquidationForm() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const uploadData = new FormData();
-  Object.keys(formData).forEach((key) => {
-    if (formData[key]) {
-      uploadData.append(key, formData[key]);
+    const travelEnd = parseISO(order.date_travel_to);
+    const now = new Date();
+    const deadline = addMonths(travelEnd, 3);
+
+    if (isAfter(travelEnd, now)) {
+      toast.error("You can only submit liquidation after your travel ends.");
+      return;
     }
-  });
+    if (isAfter(now, deadline)) {
+      toast.error("Liquidation deadline exceeded (3 months after travel).");
+      return;
+    }
 
-  uploadData.append("test", "value"); // Optional: test key to verify something is sent
-
-  // Debug log
-  for (let pair of uploadData.entries()) {
-    console.log(pair[0], pair[1]); // ✅ See what's actually being sent
-  }
-
-  try {
-    await axios.post(`/liquidation/${orderId}/submit/`, uploadData, {
-      headers: { "Content-Type": "multipart/form-data" },
+    const uploadData = new FormData();
+    Object.keys(formData).forEach((key) => {
+      if (formData[key]) {
+        uploadData.append(key, formData[key]);
+      }
     });
-    toast.success("Liquidation submitted!");
-    navigate("/liquidation");
-  } catch (error) {
-    console.error("Submit error:", error);
-    toast.error("Submission failed");
-  }
-};
 
+    try {
+      await axios.post(`/liquidation/${orderId}/submit/`, uploadData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      toast.success("Liquidation submitted!");
+      navigate("/liquidation");
+    } catch (error) {
+      console.error("Submit error:", error);
+      toast.error("Submission failed");
+    }
+  };
 
   if (loading) {
     return <Layout><p className="text-center py-6">Loading...</p></Layout>;
   }
+
+  const isTooEarly = new Date() < new Date(order.date_travel_to);
 
   return (
     <Layout>
@@ -77,8 +84,16 @@ export default function LiquidationForm() {
         <h2 className="text-2xl font-bold mb-6 text-gray-800">Submit Liquidation</h2>
         <p className="mb-4 text-gray-600">
           <strong>Travel Order #:</strong> {order.travel_order_number} <br />
-          <strong>Destination:</strong> {order.destination}
+          <strong>Destination:</strong> {order.destination} <br />
+          <strong>Travel End Date:</strong> {order.date_travel_to}
         </p>
+
+        {isTooEarly && (
+          <p className="text-yellow-600 mb-4">
+            ⚠️ You can only submit liquidation after your travel ends.
+          </p>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-gray-700 font-medium mb-2">
