@@ -21,6 +21,32 @@ class FundSerializer(serializers.ModelSerializer):
         model = Fund
         fields = ['id', 'source_of_fund', 'is_archived']
 
+class TravelOrderReportSerializer(serializers.ModelSerializer):
+    employees = serializers.SerializerMethodField()
+    prepared_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TravelOrder
+        fields = [
+            'id',
+            'destination',
+            'purpose',
+            'date_travel_from',
+            'date_travel_to',
+            'employees',
+            'prepared_by_name'
+        ]
+
+    def get_employees(self, obj):
+        return [{'id': u.id, 'full_name': f"{u.first_name} {u.last_name}"} for u in obj.employees.all()]
+
+    def get_prepared_by_name(self, obj):
+        if obj.prepared_by:
+            return f"{obj.prepared_by.first_name} {obj.prepared_by.last_name}"
+        return "—"
+
+
+
 class TravelOrderSerializer(serializers.ModelSerializer):
     employees = serializers.PrimaryKeyRelatedField(many=True, queryset=CustomUser.objects.all())
     employee_names = serializers.SerializerMethodField()

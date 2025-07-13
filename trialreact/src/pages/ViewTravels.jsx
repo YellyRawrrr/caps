@@ -57,9 +57,7 @@ const fetchTransportation = async () => {
       <div className="max-w-6xl mx-auto p-6 mt-10 bg-white rounded-lg shadow-md">
       <div className="container mx-auto p-6">
     <div className="max-w-4xl mx-auto p-6">
-  <h2 className="text-2xl font-semibold mb-6 border-b pb-2">
-    Travel Order #{order.id}
-  </h2>
+ 
 <BlobProvider document={<TravelOrderPDF data={{...order, itineraries,  transportation: transportationMap}} />}>
   {({ url, loading, error }) => (
     <button

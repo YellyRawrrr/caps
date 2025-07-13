@@ -7,11 +7,12 @@ from django.shortcuts import get_object_or_404
 from datetime import timedelta, datetime
 from collections import defaultdict 
 import json
+from django.utils.dateparse import parse_date
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
 from django.utils.timezone import now
 from .models import TravelOrder, Signature, CustomUser, Fund, Transportation, EmployeePosition, Liquidation, EmployeeSignature, Itinerary
-from .serializers import TravelOrderSerializer, UserSerializer, FundSerializer, TransportationSerializer, EmployeePositionSerializer, LiquidationSerializer, ItinerarySerializer, TravelOrderSimpleSerializer
+from .serializers import TravelOrderSerializer, UserSerializer, FundSerializer, TransportationSerializer, EmployeePositionSerializer, LiquidationSerializer, ItinerarySerializer, TravelOrderSimpleSerializer, TravelOrderReportSerializer
 from .utils import get_approval_chain, get_next_head, build_status_map
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
@@ -732,15 +733,15 @@ class AdminDashboard(APIView):
         }
 
         # Generate list of last 12 months
-        now = datetime.now()
+        now_time = datetime.now()
         month_list = [
-            (now.replace(day=1) - timedelta(days=30 * i)).strftime("%Y-%m")
+            (now_time.replace(day=1) - timedelta(days=30 * i)).strftime("%Y-%m")
             for i in reversed(range(12))
         ]
 
         result = defaultdict(lambda: {month: 0 for month in month_list})
 
-        # Travel orders grouped by submission month and employee type
+        # Travel orders grouped by month and employee_type
         orders = TravelOrder.objects.filter(submitted_at__isnull=False).annotate(
             month=TruncMonth('submitted_at')
         ).values('month', 'employees__employee_type').annotate(
@@ -754,6 +755,13 @@ class AdminDashboard(APIView):
                 if emp_type in types:
                     result[group_name][month] += entry['count']
 
+        # Summary counts
+        completed = TravelOrder.objects.filter(date_travel_to__lt=now().date()).count()
+
+        approved_by_director = TravelOrder.objects.filter(
+            status='The travel order has been approved by the Regional Director'
+        ).count()
+
         return Response({
             "labels": month_list,
             "datasets": [
@@ -761,7 +769,9 @@ class AdminDashboard(APIView):
                     "label": group,
                     "data": [result[group][month] for month in month_list]
                 } for group in groups
-            ]
+            ],
+            "completed": completed,
+            "approved_by_director": approved_by_director
         })
 
 class HeadDashboardAPIView(APIView):
@@ -865,3 +875,21 @@ class DirectorDashboardView(APIView):
             },
             "chart": chart_data
         })
+    
+class TravelOrderReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        if not start_date or not end_date:
+            return Response({"error": "Start date and end date are required."}, status=400)
+
+        queryset = TravelOrder.objects.filter(
+            date_travel_from__gte=parse_date(start_date),
+            date_travel_to__lte=parse_date(end_date)
+        ).order_by('date_travel_from')
+
+        serializer = TravelOrderReportSerializer(queryset, many=True)
+        return Response(serializer.data)

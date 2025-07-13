@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaPlane, FaBus, FaDesktop, FaCog, FaCoins, FaUser } from 'react-icons/fa';
+import { FaPlane, FaBus, FaDesktop, FaCog, FaCoins, FaUser, FaChevronDown, FaChevronUp, FaPrint } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import TravelOrderForm from './TravelOrderForm';
 import axios from '../api/axios'; // adjust path if needed
@@ -9,6 +9,7 @@ const Sidebar = ({ fetchOrders }) => {
   const { user } = useAuth();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [utilitiesOpen, setUtilitiesOpen] = useState(false);
 
   const handleAddOrder = () => setIsAddModalOpen(true);
   const handleCloseModal = async () => {
@@ -149,18 +150,64 @@ const Sidebar = ({ fetchOrders }) => {
                   <FaUser size={24} />
                   <span>User Management</span>
                 </NavLink>
-
                 <NavLink
-                  to="/admin/settings"
+                  to="/admin/reports"
                   className={({ isActive }) =>
                     `flex items-center gap-4 px-3 py-2 rounded-lg transition ${
                       isActive ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-800 hover:text-blue-700'
                     }`
                   }
                 >
-                  <FaCog size={24} />
-                  <span>Settings</span>
+                  <FaPrint size={24} />
+                  <span>Reports</span>
                 </NavLink>
+                {/* Utilities Dropdown */}
+                <button
+                  type="button"
+                  onClick={() => setUtilitiesOpen((prev) => !prev)}
+                  className={`flex items-center gap-4 px-3 py-2 rounded-lg transition w-full text-left ${
+                    utilitiesOpen ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-800 hover:text-blue-700'
+                  }`}
+                  style={{ outline: 'none', border: 'none', background: 'none' }}
+                >
+                  <FaCog size={24} />
+                  <span>Utilities</span>
+                  <span className="ml-auto">{utilitiesOpen ? <FaChevronUp size={18} /> : <FaChevronDown size={18} />}</span>
+                </button>
+                {utilitiesOpen && (
+                  <div className="ml-8 flex flex-col gap-1 mt-1">
+                    <NavLink
+                      to="/admin/utilities/funds"
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-lg transition text-[16px] ${
+                          isActive ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:text-blue-700'
+                        }`
+                      }
+                    >
+                      <span>Funds</span>
+                    </NavLink>
+                    <NavLink
+                      to="/admin/utilities/transportation"
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-lg transition text-[16px] ${
+                          isActive ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:text-blue-700'
+                        }`
+                      }
+                    >
+                      <span>Transportation</span>
+                    </NavLink>
+                    <NavLink
+                      to="/admin/utilities/employee-positions"
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-lg transition text-[16px] ${
+                          isActive ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:text-blue-700'
+                        }`
+                      }
+                    >
+                      <span>Employee Positions</span>
+                    </NavLink>
+                  </div>
+                )}
               </>
             )}
             {(user?.user_level === 'bookkeeper' || user?.user_level === 'accountant') && (

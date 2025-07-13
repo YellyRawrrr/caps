@@ -24,6 +24,7 @@ import LiquidationForm from './pages/LiquidationForm';
 import LiquidationList from './pages/LiquidationList';
 import LiquidationReview from './pages/LiquidationReview';
 import EmployeeLiquidation from './pages/EmployeeLiquidation';
+import Reports from './pages/AdminPage/Reports';
 
 
 function App() {
@@ -137,6 +138,13 @@ function App() {
 
         } />
         
+          <Route path="/admin/reports" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <Reports/>
+          </ProtectedRoute>
+
+        } />
+
         <Route path="/admin/settings" element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminSettings/>

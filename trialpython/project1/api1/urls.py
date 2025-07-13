@@ -8,7 +8,7 @@ from .views import (
     EmployeePositionCreateView,EmployeePositionDetailView,
     SubmitLiquidationView, BookkeeperReviewView, AccountantReviewView, LiquidationListView,
     TravelOrdersNeedingLiquidationView, LiquidationDetailView, TravelOrderItineraryView,
-    EmployeeDashboardAPIView, AdminDashboard, HeadDashboardAPIView, DirectorDashboardView,
+    EmployeeDashboardAPIView, AdminDashboard, HeadDashboardAPIView, DirectorDashboardView,TravelOrderReportView,
     login_view, logout_view,
     refresh_token_view, protected_view
 )
@@ -24,6 +24,7 @@ urlpatterns = [
     path('employees/', EmployeeListView.as_view(), name='employee-list'),
     path('employees/<int:pk>/', EmployeeDetailUpdateView.as_view(), name='employee-update'),
     path('admin/travels/',AdminTravelView.as_view(), name='admin-travels'),
+    path('reports/', TravelOrderReportView.as_view(), name='travel-order-report'),
 
     # Travel Order Routes
     path('travel-orders/', TravelOrderCreateView.as_view(), name='create-travel-order'),

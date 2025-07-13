@@ -5,10 +5,20 @@ import Sidebar from './Sidebar';
 const Layout = ({ children }) => {
   return (
     <div className="flex flex-col h-screen">
-      <Header />
+      {/* Hide header when printing */}
+      <div className="print:hidden">
+        <Header />
+      </div>
+
       <div className="flex flex-1">
-        <Sidebar />
-        <main className="flex-1 p-6 bg-gray-100 overflow-auto">{children}</main>
+        {/* Hide sidebar when printing */}
+        <div className="print:hidden">
+          <Sidebar />
+        </div>
+
+        <main className="flex-1 p-6 bg-gray-100 overflow-auto">
+          {children}
+        </main>
       </div>
     </div>
   );
