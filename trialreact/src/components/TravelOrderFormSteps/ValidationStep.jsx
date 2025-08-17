@@ -1,7 +1,6 @@
 import SignatureCanvas from 'react-signature-canvas';
 import { useEffect, useState } from 'react';
 
-// Approval chain map
 const approvalMap = {
   urdaneta_csc: ['urdaneta_csc', 'pangasinan_po', 'tmsd', 'afsd', 'regional'],
   sison_csc: ['sison_csc', 'pangasinan_po', 'tmsd', 'afsd', 'regional'],
@@ -16,7 +15,7 @@ const approvalMap = {
   launion_po: ['launion_po', 'tmsd', 'afsd', 'regional'],
   tmsd: ['tmsd', 'afsd', 'regional'],
   afsd: ['afsd', 'regional'],
-
+  regional: ['regional'],
 };
 
 export default function ValidationStep({
@@ -61,22 +60,29 @@ export default function ValidationStep({
       setPreparedByPositionName(position);
       setPreparedByUserType(typeOfUser);
 
+      const chain = approvalMap[found.employee_type] || [];
+      const approvers = {};
+      const autoSelect = {};
+
+      chain.forEach(level => {
+        const heads = employeeList.filter(emp => {
+          if (level === 'regional') return emp.user_level === 'director';
+          return emp.user_level === 'head' && emp.employee_type === level;
+        });
+
+        approvers[level] = heads;
+        if (heads.length > 0) {
+          autoSelect[level] = heads[0].id.toString(); // auto-select first available
+        }
+      });
+
+      setApproversByLevel(approvers);
       setFormData(prev => ({
         ...prev,
         prepared_by_position_name: position,
         prepared_by_user_type: typeOfUser,
+        approver_selection: { ...autoSelect, ...(prev.approver_selection || {}) }
       }));
-
-      const chain = approvalMap[found.employee_type] || [];
-      const approvers = {};
-
-      chain.forEach(level => {
-        approvers[level] = employeeList.filter(emp =>
-          emp.user_level === 'head' && emp.employee_type === level
-        );
-      });
-
-      setApproversByLevel(approvers);
     } else {
       setPreparedByPositionName('');
       setPreparedByUserType('');
@@ -106,13 +112,10 @@ export default function ValidationStep({
           }}
           onFocus={() => setShowPreparedByDropdown(true)}
           onBlur={() => setTimeout(() => setShowPreparedByDropdown(false), 150)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') e.preventDefault();
-          }}
+          onKeyDown={e => e.key === 'Enter' && e.preventDefault()}
           placeholder="-- Select Employee --"
           className="w-full px-3 py-2 border border-gray-300 rounded"
         />
-
         {showPreparedByDropdown &&
           filteredEmployeeOptions(0, [preparedBySearch], employeeList).length > 0 && (
             <ul className="absolute z-10 bg-white border border-gray-300 rounded shadow w-full mt-1 max-h-40 overflow-y-auto">
@@ -121,7 +124,10 @@ export default function ValidationStep({
                   key={opt.id}
                   className="px-3 py-2 hover:bg-blue-100 cursor-pointer"
                   onMouseDown={() => {
-                    setFormData(prev => ({ ...prev, prepared_by: opt.id.toString() }));
+                    setFormData(prev => ({
+                      ...prev,
+                      prepared_by: opt.id.toString(),
+                    }));
                     setPreparedBySearch(`${opt.first_name} ${opt.last_name}`);
                     setPreparedByPositionName(opt.employee_position_name || opt.position || '');
                     setPreparedByUserType(opt.type_of_user_display || opt.type_of_user || '');
@@ -135,7 +141,7 @@ export default function ValidationStep({
           )}
       </div>
 
-      {/* Position Field */}
+      {/* Position */}
       <div className="mb-4">
         <label className="block mb-1 text-sm font-medium text-gray-700">Employee Position</label>
         <input
@@ -146,7 +152,7 @@ export default function ValidationStep({
         />
       </div>
 
-      {/* Type of User Field */}
+      {/* Type of User */}
       <div className="mb-4">
         <label className="block mb-1 text-sm font-medium text-gray-700">Type of User</label>
         <input
@@ -157,28 +163,38 @@ export default function ValidationStep({
         />
       </div>
 
-      {/* One dropdown per head level */}
+      {/* Approval Chain Dropdowns (Editable) */}
       {Object.entries(approversByLevel).map(([level, approvers]) => (
-  <div className="mb-4" key={level}>
-    <label className="block mb-1 text-sm font-medium text-gray-700">
-      {level === 'regional'
-        ? 'regional director'
-        : `${level.replace(/_/g, ' ').toUpperCase()} Head`}
-    </label>
-    <select className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50" disabled>
-      {approvers.length === 0 ? (
-        <option>No available head</option>
-      ) : (
-        approvers.map(a => (
-          <option key={a.id}>
-            {a.first_name} {a.last_name}  {a.employee_position_name || a.position}
-          </option>
-        ))
-      )}
-    </select>
-  </div>
-))}
-
+        <div className="mb-4" key={level}>
+          <label className="block mb-1 text-sm font-medium text-gray-700">
+            {level === 'regional' ? 'Regional Director' : `${level.replace(/_/g, ' ').toUpperCase()} Head`}
+          </label>
+          <select
+            className="w-full px-3 py-2 border border-gray-300 rounded bg-white"
+            onChange={e => {
+              setFormData(prev => ({
+                ...prev,
+                approver_selection: {
+                  ...(prev.approver_selection || {}),
+                  [level]: e.target.value,
+                },
+              }));
+            }}
+            value={formData.approver_selection?.[level] || ''}
+          >
+            <option value="">-- Select --</option>
+            {approvers.length === 0 ? (
+              <option disabled>No available head</option>
+            ) : (
+              approvers.map(a => (
+                <option key={a.id} value={a.id}>
+                  {a.first_name} {a.last_name} {a.employee_position_name || a.position}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+      ))}
 
       {/* Signature Pad */}
       <div className="mb-4">
@@ -187,19 +203,11 @@ export default function ValidationStep({
           <SignatureCanvas
             ref={sigPadRef}
             penColor="black"
-            canvasProps={{
-              width: 500,
-              height: 150,
-              className: 'block rounded'
-            }}
+            canvasProps={{ width: 500, height: 150, className: 'block rounded' }}
           />
         </div>
         <div className="flex gap-2 mt-2">
-          <button
-            type="button"
-            onClick={handleClear}
-            className="bg-gray-300 px-3 py-1 rounded text-sm"
-          >
+          <button type="button" onClick={handleClear} className="bg-gray-300 px-3 py-1 rounded text-sm">
             Clear
           </button>
         </div>

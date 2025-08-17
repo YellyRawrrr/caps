@@ -125,7 +125,7 @@ class TravelOrder(models.Model):
     approval_stage = models.IntegerField(default=0)
     current_approver = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL, related_name='approving_orders')
 
-
+    destination = models.CharField(max_length=255)
     rejection_comment = models.TextField(null=True, blank=True)
     rejected_at = models.DateTimeField(null=True, blank=True)
     rejected_by = models.ForeignKey(CustomUser,null=True, blank=True, on_delete=models.SET_NULL, related_name='rejected_orders')
@@ -178,6 +178,16 @@ class Signature(models.Model):
 
 #---- Liquidation ------
 class Liquidation(models.Model):
+    LIQUIDATION_STATUSES = [
+    ('Pending', 'Pending'),
+    ('Under Pre-Audit', 'Under Pre-Audit'),
+    ('Under Final Audit', 'Under Final Audit'),
+    ('Ready for Claim', 'Ready for Claim'),
+    ('Rejected', 'Rejected'),
+]
+    status = models.CharField(max_length=50, choices=LIQUIDATION_STATUSES, default='Pending')
+
+
     travel_order = models.OneToOneField('TravelOrder', on_delete=models.CASCADE, related_name='liquidation')
     uploaded_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='uploaded_liquidations')
     certificate_of_travel = models.FileField(upload_to='liquidations/certificate_of_travel/')
@@ -200,12 +210,15 @@ class Liquidation(models.Model):
     status = models.CharField(max_length=50, default='Pending')
 
     def update_status(self):
-        if self.is_bookkeeper_approved and self.is_accountant_approved:
+        if self.is_bookkeeper_approved is True and self.is_accountant_approved is True:
             self.status = 'Ready for Claim'
         elif self.is_bookkeeper_approved is False or self.is_accountant_approved is False:
             self.status = 'Rejected'
-        elif self.is_bookkeeper_approved:
+        elif self.is_bookkeeper_approved is True and self.is_accountant_approved is None:
             self.status = 'Under Final Audit'
-        else:
+        elif self.is_bookkeeper_approved is None:
             self.status = 'Under Pre-Audit'
+        else:
+            self.status = 'Pending'
         self.save()
+

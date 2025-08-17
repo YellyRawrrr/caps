@@ -60,10 +60,17 @@ export default function LiquidationList() {
                     </td>
                     <td className="px-4 py-2">
                       <button
-                        onClick={() => navigate(`/liquidation/review/${rec.id}`)}
+                        onClick={() => {
+                          const userRole = localStorage.getItem("user_level");
+                          if (userRole === "bookkeeper") {
+                            navigate(`/liquidation/bookkeeper/${rec.id}`);
+                          } else if (userRole === "accountant") {
+                            navigate(`/liquidation/accountant/${rec.id}`);
+                          }
+                        }}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm transition-all"
                       >
-                        View
+                        Review
                       </button>
                     </td>
                   </tr>

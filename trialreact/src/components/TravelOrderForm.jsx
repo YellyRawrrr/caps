@@ -9,7 +9,8 @@ import ValidationStep from './TravelOrderFormSteps/ValidationStep';
 
 
 
-export default function TravelOrderForm({ isOpen, onClose, fetchOrders }) {
+export default function TravelOrderForm({ isOpen, onClose, fetchOrders, mode = 'create', existingOrder = null, onRemoveRejected = null }) {
+
   if (!isOpen) return null;
 
   // Tab navigation
@@ -118,8 +119,31 @@ useEffect(() => {
   fetchInitialData();
 }, []);
 
+useEffect(() => {
+  if (existingOrder) {
+    setFormData((prev) => ({
+      ...prev,
+      destination: existingOrder.destination || '',
+      purpose: existingOrder.purpose || '',
+      specific_role: existingOrder.specific_role || '',
+      date_travel_from: existingOrder.date_travel_from || '',
+      date_travel_to: existingOrder.date_travel_to || '',
+      mode_of_filing: existingOrder.mode_of_filing || '',
+      fund: existingOrder.fund?.toString() || '',
+      fund_cluster: existingOrder.fund_cluster || '',
+      prepared_by: existingOrder.prepared_by?.toString() || '',
+    }));
 
+    setSelectedEmployees(existingOrder.employees.map(String));
+    setEmployeeSearch(existingOrder.employees.map((empId) => {
+      const emp = employeeList.find(e => e.id.toString() === empId.toString());
+      return emp ? `${emp.first_name} ${emp.last_name}` : '';
+    }));
+    setShowDropdown(existingOrder.employees.map(() => false));
 
+    setItineraryList(existingOrder.itinerary || []);
+  }
+}, [existingOrder, employeeList]);
 
 
 
@@ -229,9 +253,9 @@ const availableOptions = (index) => {
   };
 
 const handleSubmit = async (e) => {
-  e.preventDefault(); // always prevent default
-  if (!submitClicked) return; // only allow if submit button was clicked
-  setSubmitClicked(false); // reset for next submit
+  e.preventDefault();
+  if (!submitClicked) return;
+  setSubmitClicked(false);
 
   let signatureBase64 = null;
   if (sigPadRef.current && !sigPadRef.current.isEmpty()) {
@@ -257,10 +281,16 @@ const handleSubmit = async (e) => {
   };
 
   try {
-    const response = await axios.post('travel-orders/', payload);
+    const response = mode === 'edit'
+      ? await axios.put(`/travel-orders/${existingOrder.id}/`, payload)
+      : await axios.post('travel-orders/', payload);
+
     if ([200, 201].includes(response.status)) {
-      toast.success('Travel order submitted!');
+      toast.success(mode === 'edit' ? 'Travel order resubmitted!' : 'Travel order submitted!');
       onClose();
+       if (mode === 'edit' && onRemoveRejected && existingOrder?.id) {
+    onRemoveRejected(existingOrder.id);
+  }
       await fetchOrders?.();
     } else {
       toast.error('Submission failed. Please try again.');
@@ -270,6 +300,7 @@ const handleSubmit = async (e) => {
     toast.error('Submission failed. Please check your form.');
   }
 };
+
 
 
 
@@ -429,9 +460,7 @@ const isCurrentTabValid = () => {
 
 
           <div className="flex justify-between items-center pt-4 border-t">
-            <button type="button" onClick={onClose} className="text-sm text-gray-600 hover:text-gray-800">
-              Cancel
-            </button>
+
             <div className="flex space-x-2">
               {activeTab !== 'identification' && (
                 <button type="button" onClick={goToPreviousTab} className="bg-gray-200 hover:bg-gray-300 text-sm px-4 py-1 rounded">
@@ -442,19 +471,22 @@ const isCurrentTabValid = () => {
                 <button
                   type="button"
                   onClick={goToNextTab}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-1 rounded"
+                  className="bg-blue-800 hover:bg-blue-700 text-white text-sm px-4 py-1 rounded"
                 >
                   Next
                 </button>
               ) : (
-                <button
-                  type="submit"
-                  ref={submitBtnRef}
-                  onClick={() => setSubmitClicked(true)}
-                  className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-1 rounded"
-                >
-                  Submit Travel Order
-                </button>
+               <button
+  type="submit"
+  ref={submitBtnRef}
+  onClick={() => setSubmitClicked(true)}
+  className={`text-white text-sm px-4 py-1 rounded ${
+    mode === 'edit' ? 'bg-blue-800 hover:bg-blue-700' : 'bg-blue-800 hover:bg-blue-700'
+  }`}
+>
+  {mode === 'edit' ? 'Resubmit Travel Order' : 'Submit Travel Order'}
+</button>
+
               )}
             </div>
           </div>

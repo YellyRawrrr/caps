@@ -65,7 +65,7 @@ const HeadDashboard = () => {
          <div className="max-w-6xl mx-auto p-6 mt-10 bg-white rounded-lg shadow-md">
         {/* Travel Orders This Month */}
         <div className="bg-white p-4 rounded shadow">
-          <h2 className="text-lg font-semibold mb-3 text-gray-700">This Month's Travel Orders</h2>
+          <h2 className="text-lg font-semibold mb-3 text-gray-700">Travels This Month</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full border border-gray-200 text-sm">
               <thead className="bg-blue-800 text-white">

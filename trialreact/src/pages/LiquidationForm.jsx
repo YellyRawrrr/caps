@@ -37,46 +37,35 @@ export default function LiquidationForm() {
     setFormData({ ...formData, [e.target.name]: e.target.files[0] });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    const travelEnd = parseISO(order.date_travel_to);
-    const now = new Date();
-    const deadline = addMonths(travelEnd, 3);
-
-    if (isAfter(travelEnd, now)) {
-      toast.error("You can only submit liquidation after your travel ends.");
-      return;
+  const uploadData = new FormData();
+  Object.keys(formData).forEach((key) => {
+    if (formData[key]) {
+      uploadData.append(key, formData[key]);
     }
-    if (isAfter(now, deadline)) {
-      toast.error("Liquidation deadline exceeded (3 months after travel).");
-      return;
-    }
+  });
 
-    const uploadData = new FormData();
-    Object.keys(formData).forEach((key) => {
-      if (formData[key]) {
-        uploadData.append(key, formData[key]);
-      }
+  uploadData.append("travel_order_id", orderId); // 👈 this is critical
+
+  try {
+    await axios.post(`/liquidation/${orderId}/submit/`, uploadData, {
+      headers: { "Content-Type": "multipart/form-data" },
     });
-
-    try {
-      await axios.post(`/liquidation/${orderId}/submit/`, uploadData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      toast.success("Liquidation submitted!");
-      navigate("/liquidation");
-    } catch (error) {
-      console.error("Submit error:", error);
-      toast.error("Submission failed");
-    }
-  };
+    toast.success("Liquidation submitted!");
+    navigate("/liquidation");
+  } catch (error) {
+    console.error("Submit error:", error);
+    toast.error("Submission failed");
+  }
+};
 
   if (loading) {
     return <Layout><p className="text-center py-6">Loading...</p></Layout>;
   }
 
-  const isTooEarly = new Date() < new Date(order.date_travel_to);
+
 
   return (
     <Layout>
@@ -88,11 +77,7 @@ export default function LiquidationForm() {
           <strong>Travel End Date:</strong> {order.date_travel_to}
         </p>
 
-        {isTooEarly && (
-          <p className="text-yellow-600 mb-4">
-            ⚠️ You can only submit liquidation after your travel ends.
-          </p>
-        )}
+
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -136,7 +121,7 @@ export default function LiquidationForm() {
 
           <button
             type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition-all"
+            className="bg-blue-800 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition-all"
           >
             Submit Liquidation
           </button>

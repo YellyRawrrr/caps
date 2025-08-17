@@ -208,7 +208,7 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
               onChange={e => setPositionId(e.target.value)}
               className="w-full px-4 py-2 border rounded-md"
             >
-              <option value="">Select position (optional)</option>
+              <option value="">Select position</option>
               {positions.map((pos) => (
                 <option key={pos.id} value={pos.id}>{pos.position_name}</option>
               ))}

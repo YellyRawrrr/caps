@@ -85,7 +85,7 @@ useEffect(() => {
             </div>
             <div>
               <div className="text-2xl font-bold text-blue-700 leading-tight">{summaryCounts.completed}</div>
-              <div className="text-sm font-semibold text-blue-700 mt-0.5">Completed</div>
+              <div className="text-sm font-semibold text-blue-700 mt-0.5">Completed Travels</div>
             </div>
           </div>
           {/* Approved by Director */}

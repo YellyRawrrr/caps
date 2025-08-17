@@ -3,39 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import Layout from './Layout';
 import toast from 'react-hot-toast';
+import TravelOrderForm from './TravelOrderForm';
 
 export default function RejectedOrders() {
   const [orders, setOrders] = useState([]);
   const navigate = useNavigate();
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    const fetch = async () => {
+  const fetchRejectedOrders = async () => {
+    try {
       const res = await axios.get('/my-travel-orders/');
       setOrders(res.data.filter(order => order.status.toLowerCase().includes('rejected')));
-    };
-    fetch();
-  }, []);
-
-const resubmit = async (id) => {
-  try {
-    await axios.patch(`resubmit-travel-order/${id}/`);
-    toast.success('Resubmitted!');
-    setOrders(prev => prev.filter(o => o.id !== id));
-  } catch (error) {
-    console.error('Resubmit error:', error);
-
-    if (error.response?.status === 401) {
-      toast.error('You are not authorized. Please log in again.');
-    } else if (error.response?.status === 403) {
-      toast.error('You are not allowed to resubmit this order.');
-    } else if (error.response?.data?.error) {
-      toast.error(error.response.data.error);
-    } else {
-      toast.error('Failed to resubmit travel order.');
+    } catch (err) {
+      console.error('Failed to fetch rejected orders:', err);
     }
-  }
-};
+  };
 
+  useEffect(() => {
+    fetchRejectedOrders();
+  }, []);
 
   return (
     <Layout>
@@ -49,21 +36,17 @@ const resubmit = async (id) => {
             >
               My Travels
             </button>
-            <button
-              className="pb-2 border-b-2 border-blue-600 text-blue-600"
-            >
+            <button className="pb-2 border-b-2 border-blue-600 text-blue-600">
               Rejected Orders
             </button>
           </nav>
         </div>
 
-
-
         {/* Orders Table */}
         {orders.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-blue-800  ">
+              <thead className="bg-blue-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-white">Destination</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-white">Purpose</th>
@@ -79,12 +62,15 @@ const resubmit = async (id) => {
                     <td className="px-6 py-4 text-sm text-gray-800">
                       {order.rejection_comment || 'No comment provided'}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 space-x-2">
                       <button
-                        onClick={() => resubmit(order.id)}
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setIsModalOpen(true);
+                        }}
                         className="bg-blue-800 hover:bg-blue-700 text-white py-2 px-4 rounded-md text-sm font-medium"
                       >
-                        Resubmit
+                        Edit & Resubmit
                       </button>
                     </td>
                   </tr>
@@ -95,6 +81,24 @@ const resubmit = async (id) => {
         ) : (
           <p className="text-center text-gray-500 text-lg py-16">No rejected orders found.</p>
         )}
+
+        {/* Edit Modal */}
+        {isModalOpen && selectedOrder && (
+  <TravelOrderForm
+    isOpen={isModalOpen}
+    onClose={() => {
+      setIsModalOpen(false);
+      setSelectedOrder(null);
+    }}
+    fetchOrders={fetchRejectedOrders}
+    mode="edit"
+    existingOrder={selectedOrder}
+    onRemoveRejected={(id) => {
+      setOrders(prev => prev.filter(order => order.id !== id));
+    }}
+  />
+)}
+
       </div>
     </Layout>
   );

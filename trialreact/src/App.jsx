@@ -25,6 +25,9 @@ import LiquidationList from './pages/LiquidationList';
 import LiquidationReview from './pages/LiquidationReview';
 import EmployeeLiquidation from './pages/EmployeeLiquidation';
 import Reports from './pages/AdminPage/Reports';
+import FundsPage from './pages/AdminPage/FundsPage';
+import TransportationPage from './pages/AdminPage/TransportationPage';
+import EmployeePositionsPage from './pages/AdminPage/EmployeePositionsPage';
 
 
 function App() {
@@ -145,9 +148,21 @@ function App() {
 
         } />
 
-        <Route path="/admin/settings" element={
+        <Route path="/admin-funds" element={
           <ProtectedRoute allowedRoles={['admin']}>
-            <AdminSettings/>
+            <FundsPage/>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/admin-transportation" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <TransportationPage/>
+          </ProtectedRoute>
+        } />
+
+          <Route path="/admin-empposition" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <EmployeePositionsPage/>
           </ProtectedRoute>
         } />
 
@@ -162,6 +177,11 @@ function App() {
               <LiquidationReview />
             </ProtectedRoute>
           } />
+          <Route path="/liquidation/submit/:id" element={
+  <ProtectedRoute allowedRoles={['employee', 'head']}>
+    <LiquidationForm />
+  </ProtectedRoute>
+} />
       </Routes>
     </AuthProvider>
   );

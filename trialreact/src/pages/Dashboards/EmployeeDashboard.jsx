@@ -63,7 +63,7 @@ export default function EmployeeDashboard() {
           </div>
 
           <div className="max-w-6xl mx-auto p-6 mt-10 bg-white rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold mb-2 text-gray-700">Upcoming Travels This Month</h3>
+          <h3 className="text-lg font-semibold mb-2 text-gray-700">Travels This Month</h3>
           {stats.upcoming_travels.length > 0 ? (
             <table className="w-full text-left border-collapse border border-gray-200">
               <thead>

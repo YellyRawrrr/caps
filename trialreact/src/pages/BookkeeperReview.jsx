@@ -5,9 +5,9 @@ import toast from "react-hot-toast";
 import Layout from "../components/Layout";
 import { format, isAfter, addMonths, parseISO } from "date-fns";
 
-const BASE_URL = "http://localhost:8000"; // Use env var in production
+const BASE_URL = "http://localhost:8000";
 
-export default function LiquidationReview() {
+export default function BookkeeperReview() {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [comment, setComment] = useState("");
@@ -25,20 +25,8 @@ export default function LiquidationReview() {
   }, [id]);
 
   const handleDecision = async (decision) => {
-    const userRole = localStorage.getItem("user_level");
-    let endpoint = "";
-
-    if (userRole === "bookkeeper") {
-      endpoint = `/liquidation/${id}/bookkeeper-review/`;
-    } else if (userRole === "accountant") {
-      endpoint = `/liquidation/${id}/accountant-review/`;
-    } else {
-      toast.error("Unauthorized reviewer");
-      return;
-    }
-
     try {
-      await axios.patch(endpoint, {
+      await axios.patch(`/liquidation/${id}/bookkeeper-review/`, {
         approve: decision === "approved",
         comment,
       });
@@ -46,7 +34,7 @@ export default function LiquidationReview() {
       navigate("/liquidation");
     } catch (err) {
       console.error("Review error", err);
-      toast.error("Action failed");
+      toast.error("Failed to submit review");
     }
   };
 
@@ -54,16 +42,20 @@ export default function LiquidationReview() {
 
   const travelDateStr = data?.travel_order?.date_travel_to;
   const travelDate = travelDateStr ? parseISO(travelDateStr) : null;
-
+  const isTooEarly = travelDate ? isAfter(new Date(), addMonths(travelDate, 3)) === false : false;
 
   return (
     <Layout>
       <div className="max-w-4xl mx-auto p-6">
         <h2 className="text-2xl font-semibold mb-6 border-b pb-2">
-          Liquidation #{data.id}
+          Bookkeeper Review - Liquidation #{data.id}
         </h2>
 
-
+        {isTooEarly && (
+          <p className="text-yellow-600 text-sm mb-4">
+            ⚠️ Note: This liquidation was submitted before the travel end date.
+          </p>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-base mb-6">
           <div>
@@ -107,29 +99,8 @@ export default function LiquidationReview() {
           </ul>
         </div>
 
-        {/* Review History */}
-        {(data.reviewed_by_bookkeeper || data.reviewed_by_accountant) && (
-          <div className="mb-4 text-sm text-gray-700 space-y-2">
-            {data.reviewed_by_bookkeeper && (
-              <p>
-                <strong>Bookkeeper:</strong>{" "}
-                {data.reviewed_by_bookkeeper.username} (
-                {data.bookkeeper_comment || "No comment"})
-              </p>
-            )}
-            {data.reviewed_by_accountant && (
-              <p>
-                <strong>Accountant:</strong>{" "}
-                {data.reviewed_by_accountant.username} (
-                {data.accountant_comment || "No comment"})
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Review Comment Box */}
         <div className="mb-4">
-          <label className="block font-medium mb-1">Comment (optional):</label>
+          <label className="block font-medium mb-1">Bookkeeper Review Comment:</label>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
@@ -139,7 +110,6 @@ export default function LiquidationReview() {
           />
         </div>
 
-        {/* Approve/Reject Buttons */}
         <div className="flex space-x-4 pt-4">
           <button
             onClick={() => handleDecision("approved")}

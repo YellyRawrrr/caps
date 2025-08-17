@@ -37,21 +37,27 @@ export default function EmployeeStep({
         <label className="block mb-1 text-sm font-medium text-gray-700">
           Fund Cluster
         </label>
-        <div className="flex gap-4">
-          {["01_RF", "07_TF"].map((cluster) => (
-            <label key={cluster} className="flex items-center text-sm text-gray-700">
-              <input
-                type="radio"
-                name="fund_cluster"
-                value={cluster}
-                checked={formData.fund_cluster === cluster}
-                onChange={handleChange}
-                className="mr-2"
-              />
-              {cluster}
-            </label>
-          ))}
-        </div>
+        <div className="flex gap-2">
+  {["01_RF", "07_TF"].map((cluster) => (
+    <label key={cluster} className="w-full">
+      <input
+        type="radio"
+        name="fund_cluster"
+        value={cluster}
+        checked={formData.fund_cluster === cluster}
+        onChange={handleChange}
+        className="hidden peer"
+      />
+      <div className="w-full text-center px-4 py-3 border rounded-md cursor-pointer bg-gray-50
+        peer-checked:bg-blue-800 peer-checked:text-white peer-checked:border-blue-800
+        transition duration-200"
+      >
+        {cluster}
+      </div>
+    </label>
+  ))}
+</div>
+
       </div>
       <label className="block mb-1 text-sm font-medium text-gray-700">
         Employee(s)

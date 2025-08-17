@@ -151,13 +151,52 @@ class TravelOrderCreateView(APIView):
                     }
                 )
             else:
-                print("⚠️ No signature data received. Skipping EmployeeSignature creation.")
+                print("No signature data received. Skipping EmployeeSignature creation.")
 
 
             return Response(TravelOrderSerializer(travel_order).data, status=status.HTTP_201_CREATED)
 
         print("Validation errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TravelOrderDetailUpdateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        order = get_object_or_404(TravelOrder, pk=pk)
+        serializer = TravelOrderSerializer(order)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        order = get_object_or_404(TravelOrder, pk=pk)
+
+        if order.prepared_by != request.user:
+            return Response({'error': 'Forbidden'}, status=403)
+
+        data = request.data.copy()
+
+        import json
+        if isinstance(data.get('employees'), str):
+            data['employees'] = json.loads(data['employees'])
+        if isinstance(data.get('itinerary'), str):
+            data['itinerary'] = json.loads(data['itinerary'])
+
+        serializer = TravelOrderSerializer(order, data=data)
+        if serializer.is_valid():
+            serializer.save(
+                approval_stage=0,
+                current_approver=get_next_head(get_approval_chain(request.user), 0, current_user=request.user),
+                is_resubmitted=True,
+                rejected_by=None,
+                rejection_comment='',
+                rejected_at=None,
+                status='Travel Order Resubmitted',  # ✅ Reset status from 'rejected'
+            )
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+
 
     
 class FundListCreateView(APIView):
@@ -179,6 +218,14 @@ class FundListCreateView(APIView):
 
 
 class FundDetailView(APIView):
+    def put(self, request, pk):
+        fund = get_object_or_404(Fund, pk=pk)
+        serializer = FundSerializer(fund, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
     def patch(self, request, pk):
         fund = get_object_or_404(Fund, pk=pk)
         serializer = FundSerializer(fund, data=request.data, partial=True)
@@ -266,10 +313,11 @@ class MyTravelOrdersView(APIView):
         if user.user_level == 'admin':
             orders = TravelOrder.objects.all().order_by('-submitted_at')
         else:
-            orders = TravelOrder.objects.filter(employees=user).order_by('-submitted_at')
+            orders = TravelOrder.objects.filter(prepared_by=user).order_by('-submitted_at')
 
         serializer = TravelOrderSerializer(orders.distinct(), many=True)
         return Response(serializer.data)
+
     
 class TravelOrderItineraryView(APIView):
     permission_classes = [IsAuthenticated]
@@ -298,31 +346,6 @@ class TravelOrderApprovalsView(APIView):
 
         serializer = TravelOrderSerializer(orders.distinct(), many=True)
         return Response(serializer.data)
-
-
-
-class TravelOrderDetailView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, pk):
-        user = request.user
-        try:
-            order = TravelOrder.objects.get(pk=pk)
-        except TravelOrder.DoesNotExist:
-            return Response({'error': 'Not found'}, status=404)
-
-        # 👇 Only allow access if user is involved or has high-level access
-        if (
-            user in order.employees.all()
-            or user == order.prepared_by
-            or user == order.current_approver
-            or user.user_level in ['admin', 'head', 'director']
-        ):
-            # safe to return
-            serializer = TravelOrderSerializer(order)
-            return Response(serializer.data)
-
-        return Response({'error': 'Not authorized to view this order.'}, status=403)
 
 
 
@@ -466,26 +489,6 @@ class ResubmitTravelOrderView(APIView):
 
 
 
-class TravelOrderUpdateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def patch(self, request, pk):
-        order = get_object_or_404(TravelOrder, pk=pk)
-        user = request.user
-
-        if not order.employees.filter(id=user.id).exists():
-            return Response({"error": "Unauthorized."}, status=403)
-
-        if order.status != 'Rejected':
-            return Response({"error": "Only rejected orders can be edited."}, status=400)
-
-        serializer = TravelOrderSerializer(order, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=200)
-        return Response(serializer.errors, status=400)
-
-
 class CurrentUserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -547,44 +550,20 @@ class AdminTravelView(APIView):
     
 
 class SubmitLiquidationView(APIView):
-    permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, pk):
-        travel_order = get_object_or_404(TravelOrder, pk=pk)
+        try:
+            travel_order = TravelOrder.objects.get(pk=pk)
+        except TravelOrder.DoesNotExist:
+            return Response({'error': 'Travel order not found.'}, status=404)
 
-        today = timezone.now().date()
-        date_to = travel_order.date_travel_to
-
-        if today < date_to:
-            return Response({"error": "Liquidation can only be submitted after the travel ends."}, status=400)
-
-        if today > date_to + timedelta(days=90):
-            return Response({"error": "Liquidation must be submitted within 3 months after travel."}, status=400)
-
-        # Allow resubmission by deleting previous rejected liquidation
-        if hasattr(travel_order, 'liquidation'):
-            liquidation = travel_order.liquidation
-            if liquidation.status == 'Rejected':
-                # Allow resubmit
-                data = request.data.copy()
-                data['travel_order'] = travel_order.id
-                serializer = LiquidationSerializer(liquidation, data=data, partial=True)
-                if serializer.is_valid():
-                    serializer.save(resubmitted_at=timezone.now())
-                    return Response({"success": "Liquidation resubmitted."}, status=200)
-                return Response(serializer.errors, status=400)
-            else:
-                return Response({"error": "Liquidation already submitted."}, status=400)
-
-        # First submission
-        data = request.data.copy()
-        data['travel_order'] = travel_order.id
-        serializer = LiquidationSerializer(data=data)
+        serializer = LiquidationSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(uploaded_by=request.user)
-            return Response({"success": "Liquidation submitted."}, status=201)
+            serializer.save(travel_order=travel_order, uploaded_by=request.user)
+            return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
+
 
 
 
@@ -593,46 +572,74 @@ class BookkeeperReviewView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request, pk):
-        liquidation = get_object_or_404(Liquidation, pk=pk)
-
+        # Verify user is a bookkeeper
         if request.user.user_level != 'bookkeeper':
-            return Response({'error': 'Unauthorized'}, status=403)
+            return Response({"error": "Only bookkeepers can review this liquidation"}, 
+                          status=status.HTTP_403_FORBIDDEN)
+            
+        liquidation = get_object_or_404(Liquidation, pk=pk)
+        
+        # Verify liquidation is in the correct state
+        if liquidation.status != 'Pending':
+            return Response({"error": "Liquidation is not in a reviewable state"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
 
-        approve = request.data.get('approve')
+        approve = request.data.get('approve', False)
         comment = request.data.get('comment', '')
 
         liquidation.is_bookkeeper_approved = approve
         liquidation.bookkeeper_comment = comment
         liquidation.reviewed_by_bookkeeper = request.user
         liquidation.reviewed_at_bookkeeper = timezone.now()
-        liquidation.update_status()
-
+        
+        if approve:
+            liquidation.status = 'Under Final Audit'
+        else:
+            liquidation.status = 'Rejected'
+            
+        liquidation.save()
+        
         return Response({
-            'message': 'Returned to employee for revision.' if approve is False else 'Forwarded to accountant.'
-        })
+            'message': 'Returned to employee for revision.' if not approve else 'Forwarded to accountant.',
+            'status': 'success'
+        }, status=status.HTTP_200_OK)
 
 
 class AccountantReviewView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request, pk):
-        liquidation = get_object_or_404(Liquidation, pk=pk)
-
+        # Verify user is an accountant
         if request.user.user_level != 'accountant':
-            return Response({'error': 'Unauthorized'}, status=403)
+            return Response({"error": "Only accountants can review this liquidation"}, 
+                          status=status.HTTP_403_FORBIDDEN)
+            
+        liquidation = get_object_or_404(Liquidation, pk=pk)
+        
+        # Verify liquidation is in the correct state
+        if liquidation.status != 'Under Final Audit':
+            return Response({"error": "Liquidation is not ready for final audit"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
 
-        approve = request.data.get('approve')
+        approve = request.data.get('approve', False)
         comment = request.data.get('comment', '')
 
         liquidation.is_accountant_approved = approve
         liquidation.accountant_comment = comment
         liquidation.reviewed_by_accountant = request.user
         liquidation.reviewed_at_accountant = timezone.now()
-        liquidation.update_status()
-
+        
+        if approve:
+            liquidation.status = 'Ready for Claim'
+        else:
+            liquidation.status = 'Rejected'
+            
+        liquidation.save()
+        
         return Response({
-            'message': 'Liquidation approved and ready for claim.' if approve else 'Rejected by accountant.'
-        })
+            'message': 'Liquidation approved and ready for claim.' if approve else 'Rejected by accountant.',
+            'status': 'success'
+        }, status=status.HTTP_200_OK)
 
     
 class LiquidationListView(APIView):
@@ -657,9 +664,8 @@ class TravelOrdersNeedingLiquidationView(APIView):
         # Filter:
         travel_orders = TravelOrder.objects.filter(
             prepared_by=user,
-            date_travel_to__lte=now,
-            date_travel_to__gte=min_date,
-            liquidation__isnull=True  # No liquidation yet
+            travel_order_number__isnull=False,
+            liquidation__isnull=True
         ).order_by("-date_travel_to")
 
         serializer = TravelOrderSimpleSerializer(travel_orders, many=True)

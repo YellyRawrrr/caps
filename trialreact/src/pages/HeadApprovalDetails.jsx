@@ -36,21 +36,21 @@ export default function HeadApprovalDetails() {
         <p className="text-gray-500 text-center py-8">No approval found.</p>
       ) : (
         <table className="min-w-full table-auto border-collapse">
-          <thead className="bg-gray-200">
+          <thead className="bg-blue-800">
             <tr>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-600 border-b">Destination</th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-600 border-b">Purpose</th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-600 border-b">Departure</th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-600 border-b">Return</th>
-              <th className="px-6 py-3 text-left text-sm font-medium text-gray-600 border-b">Status</th>
-              <th className="px-6 py-3 text-right text-sm font-medium text-gray-600 border-b">Actions</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-stone-50 border-b">Prepared by</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-stone-50 border-b">Destination</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-stone-50 border-b">Departure</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-stone-50 border-b">Return</th>
+              <th className="px-6 py-3 text-left text-sm font-medium text-stone-50 border-b">Status</th>
+              <th className="px-6 py-3 text-right text-sm font-medium text-stone-50 border-b">Actions</th>
             </tr>
           </thead>
           <tbody>
             {orders.map((order) => (
               <tr key={order.id} className="hover:bg-gray-100">
+                <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.prepared_by_name}</td>
                 <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.destination}</td>
-                <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.purpose}</td>
                 <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.date_travel_from}</td>
                 <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.date_travel_to}</td>
                 <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.status}</td>

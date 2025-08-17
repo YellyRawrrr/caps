@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
-import { FaPlane, FaBus, FaDesktop, FaCog, FaCoins, FaUser, FaChevronDown, FaChevronUp, FaPrint } from 'react-icons/fa';
+import { NavLink, useLocation } from 'react-router-dom';
+import { FaBus, FaDesktop, FaCog, FaCoins, FaUser, FaChevronDown, FaChevronUp, FaPrint, FaCheckCircle } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import TravelOrderForm from './TravelOrderForm';
 import axios from '../api/axios'; // adjust path if needed
@@ -10,6 +10,10 @@ const Sidebar = ({ fetchOrders }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [utilitiesOpen, setUtilitiesOpen] = useState(false);
+  const location = useLocation();
+  const [rejectedCount, setRejectedCount] = useState(0);
+
+
 
   const handleAddOrder = () => setIsAddModalOpen(true);
   const handleCloseModal = async () => {
@@ -18,6 +22,25 @@ const Sidebar = ({ fetchOrders }) => {
   };
 
   // Fetch pending approvals count using axios
+  useEffect(() => {
+  const fetchRejectedCount = async () => {
+    if (user && (user.user_level === 'employee' || user.user_level === 'head')) {
+      try {
+        const res = await axios.get('/my-travel-orders/');
+        const rejected = res.data.filter(order =>
+          order.status && order.status.toLowerCase().includes('rejected')
+        );
+        setRejectedCount(rejected.length);
+      } catch (err) {
+        console.error('Failed to fetch rejected orders:', err);
+        setRejectedCount(0);
+      }
+    }
+  };
+
+  fetchRejectedCount();
+}, [user]);
+
   useEffect(() => {
     const fetchPendingApprovals = async () => {
       if (user && (user.user_level === 'head' || user.user_level === 'director')) {
@@ -80,15 +103,25 @@ const Sidebar = ({ fetchOrders }) => {
               <>
                 <NavLink
                   to="/travel-order"
-                  className={({ isActive }) =>
-                    `flex items-center gap-4 px-3 py-2 rounded-lg transition ${
-                      isActive ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-800 hover:text-blue-700'
-                    }`
-                  }
+                  className={() => {
+                    const isTravelRelated =
+                      location.pathname.startsWith('/travel-order') || location.pathname === '/rejected';
+                    return `flex items-center gap-4 px-3 py-2 rounded-lg transition relative ${
+                      isTravelRelated ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-800 hover:text-blue-700'
+                    }`;
+                  }}
                 >
-                  <FaBus size={24} />
+                  <span className="relative">
+                    <FaBus size={24} />
+                    {rejectedCount > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] flex items-center justify-center border-2 border-white shadow">
+                        {rejectedCount}
+                      </span>
+                    )}
+                  </span>
                   <span>My Travels</span>
                 </NavLink>
+
 
                 <NavLink
                   to="/liquidation"
@@ -99,7 +132,7 @@ const Sidebar = ({ fetchOrders }) => {
                   }
                 >
                   <FaCoins size={24} />
-                  <span>Liquidate</span>
+                  <span>Liquidation</span>
                 </NavLink>
               </>
             )}
@@ -114,14 +147,14 @@ const Sidebar = ({ fetchOrders }) => {
                 }
               >
                 <span className="relative">
-                  <FaPlane size={24} />
+                  <FaCheckCircle size={24} />
                   {pendingCount > 0 && (
                     <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] flex items-center justify-center border-2 border-white shadow">
                       {pendingCount}
                     </span>
                   )}
                 </span>
-                <span>Pending Approvals</span>
+                <span>Approvals</span>
               </NavLink>
             )}
 
@@ -177,7 +210,7 @@ const Sidebar = ({ fetchOrders }) => {
                 {utilitiesOpen && (
                   <div className="ml-8 flex flex-col gap-1 mt-1">
                     <NavLink
-                      to="/admin/utilities/funds"
+                      to="/admin-funds"
                       className={({ isActive }) =>
                         `flex items-center gap-3 px-3 py-2 rounded-lg transition text-[16px] ${
                           isActive ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:text-blue-700'
@@ -187,7 +220,7 @@ const Sidebar = ({ fetchOrders }) => {
                       <span>Funds</span>
                     </NavLink>
                     <NavLink
-                      to="/admin/utilities/transportation"
+                      to="/admin-transportation"
                       className={({ isActive }) =>
                         `flex items-center gap-3 px-3 py-2 rounded-lg transition text-[16px] ${
                           isActive ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:text-blue-700'
@@ -197,7 +230,7 @@ const Sidebar = ({ fetchOrders }) => {
                       <span>Transportation</span>
                     </NavLink>
                     <NavLink
-                      to="/admin/utilities/employee-positions"
+                      to="/admin-empposition"
                       className={({ isActive }) =>
                         `flex items-center gap-3 px-3 py-2 rounded-lg transition text-[16px] ${
                           isActive ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700 hover:text-blue-700'

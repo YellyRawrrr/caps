@@ -53,13 +53,20 @@ class TravelOrderSerializer(serializers.ModelSerializer):
     prepared_by = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all())
     itinerary = ItinerarySerializer(many=True)
     employee_position = serializers.PrimaryKeyRelatedField(queryset=EmployeePosition.objects.all(), allow_null=True, required=False)
+    prepared_by_name = serializers.SerializerMethodField()
+    
 
     class Meta:
         model = TravelOrder
         fields = '__all__'
 
+    def get_prepared_by_name(self, obj):
+        if obj.prepared_by:
+            return f"{obj.prepared_by.first_name} {obj.prepared_by.last_name}"
+        return None
+
     def get_employee_names(self, obj):
-        return [f"{u.first_name} {u.last_name}" for u in obj.employees.all()]
+        return [f"{u.first_name} {u.last_name}," for u in obj.employees.all()]
 
     def create(self, validated_data):
         itinerary_data = validated_data.pop('itinerary')
@@ -72,6 +79,26 @@ class TravelOrderSerializer(serializers.ModelSerializer):
             Itinerary.objects.create(travel_order=travel_order, **item)
 
         return travel_order
+
+    def update(self, instance, validated_data):
+        itinerary_data = validated_data.pop('itinerary', [])
+        employees_data = validated_data.pop('employees', [])
+
+        # Update fields of TravelOrder
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Update ManyToMany employees
+        instance.employees.set(employees_data)
+
+        # Clear and recreate Itineraries
+        instance.itinerary.all().delete()
+        for item in itinerary_data:
+            item.pop('travel_order', None)  # 🔥 Prevent duplicate keyword
+            Itinerary.objects.create(travel_order=instance, **item)
+
+        return instance
 
 
 class EmployeePositionSerializer(serializers.ModelSerializer):
@@ -134,7 +161,9 @@ class UserSerializer(serializers.ModelSerializer):
 class TravelOrderSimpleSerializer(serializers.ModelSerializer):
     class Meta:
         model = TravelOrder
-        fields = ['id', 'travel_order_number']
+        fields = ['id', 'travel_order_number', 'destination', 'date_travel_from', 'date_travel_to']
+
+
 
 
 class LiquidationSerializer(serializers.ModelSerializer):

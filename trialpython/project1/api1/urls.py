@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     TravelOrderCreateView, ApproveTravelOrderView, ResubmitTravelOrderView,
-    CurrentUserView,TravelOrderUpdateView,TravelOrderDetailView,
+    CurrentUserView,TravelOrderDetailUpdateView,
     EmployeeListView, MyTravelOrdersView, TravelOrderApprovalsView,
     FundListCreateView, TransportationCreateView,AdminTravelView,
     FundDetailView,TransportationDetailView, EmployeeDetailUpdateView,
@@ -31,9 +31,9 @@ urlpatterns = [
 
     path('my-travel-orders/', MyTravelOrdersView.as_view(), name='my-travel-orders'),
     path('my-pending-approvals/', TravelOrderApprovalsView.as_view(), name='travel-order-approvals'),
-    path('travel-orders/<int:pk>/', TravelOrderDetailView.as_view(), name='travel-order-detail'),
+    path('travel-orders/<int:pk>/', TravelOrderDetailUpdateView.as_view(), name='travel-order-detail-update'),
     path('travel-itinerary/<int:travel_order_id>/', TravelOrderItineraryView.as_view(), name='travel-order-itineraries'),
-
+    
     #travels settings
     path('funds/', FundListCreateView.as_view(), name='funds'),
     path('transportation/', TransportationCreateView .as_view(), name='transportation'),
@@ -65,7 +65,7 @@ urlpatterns = [
 
 
 
-    path('update-travel-order/<int:pk>/', TravelOrderUpdateView.as_view(), name='update-travel-order'),
+   
     path('approve-travel-order/<int:pk>/', ApproveTravelOrderView.as_view(), name='approve-travel-order'),
     path('resubmit-travel-order/<int:pk>/', ResubmitTravelOrderView.as_view(), name='resubmit-travel-order'),
 

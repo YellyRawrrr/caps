@@ -44,7 +44,7 @@ const EmployeeTravel = () => {
           <table className="min-w-full table-auto">
             <thead className="bg-blue-800">
               <tr>
-                {['Travel Order No.', 'Destination', 'Purpose', 'Departure', 'Return','Status','Actions'].map((header) => (
+                {['Travel Order No.', 'Prepared by', 'Destination', 'Departure', 'Return','Status','Actions'].map((header) => (
                   <th
                     key={header}
                     className={`px-6 py-3 text-sm font-semibold text-gray-50 border-b ${
@@ -61,8 +61,8 @@ const EmployeeTravel = () => {
                 paginatedOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-gray-50">
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.travel_order_number}</td>
+                    <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.prepared_by_name}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.destination}</td>
-                    <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.purpose}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.date_travel_from}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">{order.date_travel_to}</td>
                     <td className="px-6 py-3 text-sm text-gray-800 border-b">
