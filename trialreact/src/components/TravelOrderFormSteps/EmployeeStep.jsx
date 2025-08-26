@@ -23,7 +23,7 @@ export default function EmployeeStep({
     <>
       <div>
         <label className="block mb-1 text-sm font-medium text-gray-700">
-          Date of Filing
+          Date of Filing<span className="text-red-500 ml-1">*</span>
         </label>
         <input
           type="date"
@@ -35,7 +35,7 @@ export default function EmployeeStep({
       </div>
       <div className="mb-4">
         <label className="block mb-1 text-sm font-medium text-gray-700">
-          Fund Cluster
+          Fund Cluster<span className="text-red-500 ml-1">*</span>
         </label>
         <div className="flex gap-2">
   {["01_RF", "07_TF"].map((cluster) => (
@@ -60,7 +60,7 @@ export default function EmployeeStep({
 
       </div>
       <label className="block mb-1 text-sm font-medium text-gray-700">
-        Employee(s)
+        Employee(s)<span className="text-red-500 ml-1">*</span>
       </label>
       {selectedEmployees.map((emp, index) => (
         <div key={index} className="flex gap-2 mb-2 relative">
@@ -156,7 +156,7 @@ export default function EmployeeStep({
       </button>
       <div>
         <label className="block mb-1 text-sm font-medium text-gray-700">
-          Number of employee(s)
+          Number of employee(s)<span className="text-red-500 ml-1">*</span>
         </label>
         <input
           type="number"
@@ -197,7 +197,7 @@ export default function EmployeeStep({
       ))}
       <div>
         <label className="block mb-1 text-sm font-medium text-gray-700">
-          Purpose
+          Purpose<span className="text-red-500 ml-1">*</span>
         </label>
         <textarea
           name="purpose"
@@ -210,7 +210,7 @@ export default function EmployeeStep({
       </div>
       <div>
         <label className="block mb-1 text-sm font-medium text-gray-700">
-          Specific Role
+          Specific Role<span className="text-red-500 ml-1">*</span>
         </label>
         <textarea
           name="specific_role"
@@ -222,7 +222,7 @@ export default function EmployeeStep({
         />
       </div>
       <div className="mb-4">
-        <label className="block mb-1 text-sm font-medium text-gray-700">Fund Source</label>
+        <label className="block mb-1 text-sm font-medium text-gray-700">Fund Source<span className="text-red-500 ml-1">*</span></label>
         <select
           name="fund"
           value={formData.fund}

@@ -103,45 +103,51 @@ class TravelOrderCreateView(APIView):
     def post(self, request):
         user = request.user
 
-        if user.user_level == 'director':
-            return Response({"error": "Regional Director cannot file travel orders."}, status=400)
-
+        # Get approval chain
         approval_chain = get_approval_chain(user)
-        next_head = get_next_head(approval_chain, 0, current_user=user)
+        next_head = get_next_head(approval_chain, 0, current_user=user) if approval_chain else None
 
-        # Clone the request data
         data = request.data.copy()
         data['current_approver'] = next_head.id if next_head else None
         data['approval_stage'] = 0
 
-        # If itinerary or employees came as JSON strings, parse them
+        # Parse itinerary
         if isinstance(data.get('itinerary'), str):
             try:
                 data['itinerary'] = json.loads(data['itinerary'])
             except json.JSONDecodeError:
                 return Response({'itinerary': ['Invalid itinerary format.']}, status=400)
 
-        # Parse and ensure valid employees list
+        # Parse employees
         if isinstance(data.get('employees'), str):
             try:
                 data['employees'] = json.loads(data['employees'])
             except json.JSONDecodeError:
                 return Response({'employees': ['Invalid employees format.']}, status=400)
 
-        # Ensure the logged-in user is always in the employees list
+        # Ensure filer is in employees
         if user.id not in data['employees']:
             data['employees'].insert(0, user.id)
-
 
         # Validate and save
         serializer = TravelOrderSerializer(data=data)
         if serializer.is_valid():
             travel_order = serializer.save(prepared_by=user)
             travel_order.number_of_employees = travel_order.employees.count()
+
+            # 🔑 Director → auto-generate travel order number
+            if user.user_level == 'director':
+                from .utils import generate_travel_order_number
+                travel_order.travel_order_number = generate_travel_order_number()
+                # No approvers needed
+                travel_order.current_approver = None
+                travel_order.approval_stage = 0
+                travel_order.status = "Travel order is placed"
+
             travel_order.save()
 
+            # Handle signature
             signature_data = request.data.get("signature")
-
             if signature_data:
                 EmployeeSignature.objects.update_or_create(
                     order=travel_order,
@@ -150,14 +156,11 @@ class TravelOrderCreateView(APIView):
                         "signature_data": signature_data
                     }
                 )
-            else:
-                print("No signature data received. Skipping EmployeeSignature creation.")
-
 
             return Response(TravelOrderSerializer(travel_order).data, status=status.HTTP_201_CREATED)
 
-        print("Validation errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class TravelOrderDetailUpdateView(APIView):
@@ -412,7 +415,8 @@ class ApproveTravelOrderView(APIView):
                 Signature.objects.create(
                     order=order,
                     signed_by=user,
-                    signature_data=signature
+                    signature_data=signature,
+                    comment=comment 
                 )
 
             order.save()

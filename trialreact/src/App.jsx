@@ -5,7 +5,6 @@ import MyTravels from './pages/MyTravels';
 import RejectedOrders from './components/RejectedOrders';
 import HeadApprovalPanel from './components/HeadApprovalPanel';
 import ProtectedRoute from './components/ProtectedRoute';
-import Navbar from './components/NavBar';
 import LoginPage from './pages/LoginPage';
 import TravelOrderForm from './components/TravelOrderForm';
 import ViewTravels from './pages/ViewTravels';
@@ -65,18 +64,18 @@ function App() {
 
         {/* Employee or Head */}
         <Route path="/travel-order" element={
-          <ProtectedRoute allowedRoles={['employee', 'head',]}>
+          <ProtectedRoute allowedRoles={['employee', 'head', 'director']}>
             <MyTravels />
           </ProtectedRoute>
         } />
 
         <Route path="/travel-order/add/" element={
-          <ProtectedRoute allowedRoles={['employee', 'head']}>
+          <ProtectedRoute allowedRoles={['employee', 'head', 'director']}>
             <TravelOrderForm/>
           </ProtectedRoute>
         } />
         <Route path="/travel-order/view/:id" element={
-          <ProtectedRoute allowedRoles={['employee', 'head', 'admin']}>
+          <ProtectedRoute allowedRoles={['employee', 'head', 'admin', 'director']}>
             <ViewTravels/>
           </ProtectedRoute>
         } />

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import axios from '../api/axios';
 import { useNavigate } from 'react-router-dom';
@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 
 export default function ApproveTravel({ isOpen, onClose, orderId, fetchOrders }) {
   const sigPadRef = useRef();
+  const [comment, setComment] = useState("");
   const navigate = useNavigate();
 
   if (!isOpen) return null;
@@ -21,7 +22,8 @@ export default function ApproveTravel({ isOpen, onClose, orderId, fetchOrders })
     try {
       const response = await axios.patch(`/approve-travel-order/${orderId}/`, {
         decision: 'approve',
-        signature
+        signature,
+        comment,   // ✅ include comment in request
       });
 
       const travelNumber = response?.data?.travel_order_number;
@@ -40,7 +42,6 @@ export default function ApproveTravel({ isOpen, onClose, orderId, fetchOrders })
       console.error(err);
       toast.error('Approval failed!');
     }
-
   };
 
   return (
@@ -57,8 +58,22 @@ export default function ApproveTravel({ isOpen, onClose, orderId, fetchOrders })
 
         {/* Header */}
         <h2 className="text-xl font-bold text-gray-800">
-          Approve Travel Order 
+          Approve Travel Order
         </h2>
+
+        {/* Comment Field */}
+        <div className="space-y-2">
+          <label className="text-gray-700 text-sm font-medium">
+            Comment (optional):
+          </label>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            className="w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+            rows={3}
+            placeholder="Add your approval comment..."
+          />
+        </div>
 
         {/* Signature Field */}
         <div className="space-y-2">

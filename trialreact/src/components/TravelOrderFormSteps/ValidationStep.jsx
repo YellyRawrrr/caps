@@ -94,7 +94,7 @@ export default function ValidationStep({
     <>
       {/* Prepared By Field */}
       <div className="mb-4 relative">
-        <label className="block mb-1 text-sm font-medium text-gray-700">Prepared By</label>
+        <label className="block mb-1 text-sm font-medium text-gray-700">Prepared By<span className="text-red-500 ml-1">*</span></label>
         <input
           ref={preparedByInputRef}
           type="text"
@@ -143,7 +143,7 @@ export default function ValidationStep({
 
       {/* Position */}
       <div className="mb-4">
-        <label className="block mb-1 text-sm font-medium text-gray-700">Employee Position</label>
+        <label className="block mb-1 text-sm font-medium text-gray-700">Employee Position<span className="text-red-500 ml-1">*</span></label>
         <input
           type="text"
           value={preparedByPositionName}
@@ -154,7 +154,7 @@ export default function ValidationStep({
 
       {/* Type of User */}
       <div className="mb-4">
-        <label className="block mb-1 text-sm font-medium text-gray-700">Type of User</label>
+        <label className="block mb-1 text-sm font-medium text-gray-700">Type of User<span className="text-red-500 ml-1">*</span></label>
         <input
           type="text"
           value={preparedByUserType}
@@ -167,7 +167,7 @@ export default function ValidationStep({
       {Object.entries(approversByLevel).map(([level, approvers]) => (
         <div className="mb-4" key={level}>
           <label className="block mb-1 text-sm font-medium text-gray-700">
-            {level === 'regional' ? 'Regional Director' : `${level.replace(/_/g, ' ').toUpperCase()} Head`}
+            {level === 'regional' ? 'Regional Director' : `${level.replace(/_/g, ' ').toUpperCase()} Head`}<span className="text-red-500 ml-1">*</span>
           </label>
           <select
             className="w-full px-3 py-2 border border-gray-300 rounded bg-white"
@@ -198,7 +198,7 @@ export default function ValidationStep({
 
       {/* Signature Pad */}
       <div className="mb-4">
-        <label className="block mb-1 text-sm font-medium text-gray-700">Signature</label>
+        <label className="block mb-1 text-sm font-medium text-gray-700">Signature<span className="text-red-500 ml-1">*</span></label>
         <div className="border border-gray-300 rounded bg-gray-50 overflow-x-auto">
           <SignatureCanvas
             ref={sigPadRef}

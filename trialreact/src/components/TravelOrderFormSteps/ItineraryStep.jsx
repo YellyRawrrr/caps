@@ -11,7 +11,7 @@ export default function ItineraryStep({
         <div key={index} className="mb-4 border p-4 rounded">
           <h4 className="font-medium text-sm mb-2">Itinerary #{index + 1}</h4>
           <div className="mb-2">
-            <label className="block text-sm font-medium text-gray-700">Date</label>
+            <label className="block text-sm font-medium text-gray-700">Date<span className="text-red-500 ml-1">*</span></label>
             <input
               type="date"
               name="itinerary_date"
@@ -21,7 +21,7 @@ export default function ItineraryStep({
             />
           </div>
           <div className="mb-2">
-            <label className="block text-sm font-medium text-gray-700">Departure Time</label>
+            <label className="block text-sm font-medium text-gray-700">Departure Time<span className="text-red-500 ml-1">*</span></label>
             <input
               type="time"
               name="departure_time"
@@ -31,7 +31,7 @@ export default function ItineraryStep({
             />
           </div>
           <div className="mb-2">
-            <label className="block text-sm font-medium text-gray-700">Arrival Time</label>
+            <label className="block text-sm font-medium text-gray-700">Arrival Time<span className="text-red-500 ml-1">*</span></label>
             <input
               type="time"
               name="arrival_time"
@@ -41,7 +41,7 @@ export default function ItineraryStep({
             />
           </div>
           <div className="mb-2">
-            <label className="block text-sm font-medium text-gray-700">Means of Transportation</label>
+            <label className="block text-sm font-medium text-gray-700">Means of Transportation<span className="text-red-500 ml-1">*</span></label>
             <select
               name="transportation"
               value={entry.transportation || ''}
@@ -58,7 +58,7 @@ export default function ItineraryStep({
             </select>
           </div>
           <div className="mb-2">
-            <label className="block text-sm font-medium text-gray-700">Transportation Allowance</label>
+            <label className="block text-sm font-medium text-gray-700">Transportation Allowance<span className="text-red-500 ml-1">*</span></label>
             <input
               type="number"
               name="transportation_allowance"
@@ -68,7 +68,7 @@ export default function ItineraryStep({
             />
           </div>
           <div className="mb-2">
-            <label className="block text-sm font-medium text-gray-700">Per Diem</label>
+            <label className="block text-sm font-medium text-gray-700">Per Diem<span className="text-red-500 ml-1">*</span></label>
             <input
               type="number"
               name="per_diem"
@@ -88,7 +88,7 @@ export default function ItineraryStep({
             />
           </div>
           <div className="mb-2">
-            <label className="block text-sm font-medium text-gray-700">Total Amount</label>
+            <label className="block text-sm font-medium text-gray-700">Total Amount<span className="text-red-500 ml-1">*</span></label>
             <input
               type="number"
               name="total_amount"

@@ -59,7 +59,7 @@ const Sidebar = ({ fetchOrders }) => {
   return (
     <aside className="w-68 bg-white  p-6 h-screen flex flex-col justify-between">
       <div>
-        {user && (user.user_level === 'employee' || user.user_level === 'head') && (
+        {user && (user.user_level === 'employee' || user.user_level === 'head' || user.user_level === 'director') && (
           <button
             onClick={handleAddOrder}
             className="w-full bg-blue-800 text-white py-4 rounded-xl text-lg font-semibold hover:bg-blue-700 mb-10"
@@ -99,7 +99,7 @@ const Sidebar = ({ fetchOrders }) => {
               <span>Dashboard</span>
             </NavLink>
 
-            {(user?.user_level === 'employee' || user?.user_level === 'head') && (
+            {user && (user.user_level === 'employee' || user.user_level === 'head' || user.user_level === 'director') && (
               <>
                 <NavLink
                   to="/travel-order"

@@ -19,6 +19,7 @@ useEffect(() => {
     try {
       const res = await axios.get(`/travel-orders/${id}/`);
       setOrder(res.data);
+      console.log("Fetched travel order:", res.data); 
     } catch (err) {
       console.error('Error fetching travel order:', err);
     }
@@ -106,11 +107,14 @@ const fetchTransportation = async () => {
         <div>
       <span className="font-medium">Status:</span> {order.status}
     </div>
+    
     {order.rejection_comment && (
       <div className="sm:col-span-2 text-red-600">
         <span className="font-medium">Rejection Reason:</span> {order.rejection_comment}
       </div>
     )}
+   
+
   </div>
   {itineraries.length > 0 && (
   <div className="mt-8">
@@ -150,7 +154,49 @@ const fetchTransportation = async () => {
       </table>
     </div>
   </div>
-  
+)}
+
+{order.approvals && order.approvals.length > 0 && (
+  <div className="mt-16 mb-8">
+    <h3 className="text-2xl font-medium text-gray-700 mb-8">Approvals</h3>
+    <div className="space-y-6">
+      {order.approvals.map((approval, idx) => (
+        <div
+          key={idx}
+          className="flex items-center justify-between py-5 border-b border-gray-200 group hover:bg-gray-50 transition-colors duration-200"
+        >
+          <div className="flex-1">
+            <div className="flex items-baseline gap-3">
+              <p className="text-lg font-medium text-gray-800">
+                {approval.signed_by_name}
+                <span className="text-gray-500 font-normal ml-3 text-base">
+                  {approval.position}
+                </span>
+              </p>
+            </div>
+            {approval.signed_at && (
+              <p className="text-sm text-gray-500 mt-2">
+                {new Date(approval.signed_at).toLocaleString()}
+              </p>
+            )}
+            {approval.comment && (
+              <div className="mt-2">
+                <span className="text-sm font-medium text-gray-600">Comment: </span>
+                <span className="text-sm text-gray-600">{approval.comment}</span>
+              </div>
+            )}
+          </div>
+          {approval.signature_data && (
+            <img
+              src={approval.signature_data}
+              alt="Signature"
+              className="h-12 opacity-50 group-hover:opacity-75 transition-opacity duration-200"
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
 )}
 
 </div>

@@ -72,7 +72,6 @@ class Fund(models.Model):
 
 
 # --- TRAVEL ORDER ---
-
 class TravelOrder(models.Model):
     STATUS_CHOICES = [
         ('Travel order is placed', 'Travel order is placed'),
@@ -135,6 +134,7 @@ class TravelOrder(models.Model):
 
     def __str__(self):
         return f"TravelOrder to {self.destination} by {', '.join([e.full_name for e in self.employees.all()])}"
+
     
 class Transportation(models.Model):
     means_of_transportation = models.CharField(max_length=50)
@@ -169,6 +169,7 @@ class Signature(models.Model):
     signed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     signature_data = models.TextField()  # Base64
     signed_at = models.DateTimeField(auto_now_add=True)
+    comment = models.TextField(null=True, blank=True)  
 
     def __str__(self):
         return f"Signed by {self.signed_by.username} for order {self.order.id}"
@@ -221,4 +222,3 @@ class Liquidation(models.Model):
         else:
             self.status = 'Pending'
         self.save()
-

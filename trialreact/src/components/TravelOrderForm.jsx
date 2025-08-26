@@ -306,7 +306,7 @@ const handleSubmit = async (e) => {
 
   const goToNextTab = () => {
     if (!isCurrentTabValid()) {
-      alert('Please fill in all required fields before proceeding.');
+      toast.error('Please fill in all required fields before proceeding.');
       return;
     }
     const index = tabs.indexOf(activeTab);

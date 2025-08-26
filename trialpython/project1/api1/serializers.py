@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import TravelOrder, Signature, CustomUser, Itinerary, Fund, Transportation, EmployeePosition, Liquidation
+from .models import TravelOrder, Signature, CustomUser, Itinerary, Fund, Transportation, EmployeePosition, Liquidation,EmployeeSignature
 from django.contrib.auth.hashers import make_password
 
 class TransportationSerializer(serializers.ModelSerializer):
@@ -45,6 +45,23 @@ class TravelOrderReportSerializer(serializers.ModelSerializer):
             return f"{obj.prepared_by.first_name} {obj.prepared_by.last_name}"
         return "—"
 
+class SignatureSerializer(serializers.ModelSerializer):
+    signed_by_name = serializers.CharField(source="signed_by.full_name", read_only=True)
+    position = serializers.CharField(source="signed_by.employee_position.position_name", read_only=True)
+
+    class Meta:
+        model = Signature
+        fields = ["id", "signed_by_name", "position", "signature_data", "signed_at", "comment"]
+
+
+class EmployeeSignatureSerializer(serializers.ModelSerializer):
+    signed_by_name = serializers.CharField(source="signed_by.full_name", read_only=True)
+    position = serializers.CharField(source="signed_by.employee_position.position_name", read_only=True)
+
+    class Meta:
+        model = EmployeeSignature
+        fields = ["id", "signed_by_name", "position", "signature_data", "signed_at"]
+
 
 
 class TravelOrderSerializer(serializers.ModelSerializer):
@@ -54,19 +71,35 @@ class TravelOrderSerializer(serializers.ModelSerializer):
     itinerary = ItinerarySerializer(many=True)
     employee_position = serializers.PrimaryKeyRelatedField(queryset=EmployeePosition.objects.all(), allow_null=True, required=False)
     prepared_by_name = serializers.SerializerMethodField()
-    
+    evidence = serializers.FileField(required=False, allow_null=True)  # Add evidence field
+
+    # NEW
+    approvals = SignatureSerializer(source="signature_set", many=True, read_only=True)  
+    employee_signature = EmployeeSignatureSerializer(read_only=True)
 
     class Meta:
         model = TravelOrder
         fields = '__all__'
 
     def get_prepared_by_name(self, obj):
-        if obj.prepared_by:
-            return f"{obj.prepared_by.first_name} {obj.prepared_by.last_name}"
-        return None
+        return f"{obj.prepared_by.first_name} {obj.prepared_by.last_name}" if obj.prepared_by else None
 
     def get_employee_names(self, obj):
-        return [f"{u.first_name} {u.last_name}," for u in obj.employees.all()]
+        return [f"{u.first_name} {u.last_name}" for u in obj.employees.all()]
+
+    def validate_evidence(self, value):
+        if value:
+            # Check file extension
+            allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf']
+            file_extension = os.path.splitext(value.name)[1].lower()
+            if file_extension not in allowed_extensions:
+                raise serializers.ValidationError('Only image files (JPG, JPEG, PNG, GIF) and PDF files are allowed.')
+            
+            # Check file size (10MB limit)
+            if value.size > 10 * 1024 * 1024:
+                raise serializers.ValidationError('File size must be less than 10MB.')
+        
+        return value
 
     def create(self, validated_data):
         itinerary_data = validated_data.pop('itinerary')
@@ -84,7 +117,7 @@ class TravelOrderSerializer(serializers.ModelSerializer):
         itinerary_data = validated_data.pop('itinerary', [])
         employees_data = validated_data.pop('employees', [])
 
-        # Update fields of TravelOrder
+        # Update TravelOrder fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
@@ -92,13 +125,14 @@ class TravelOrderSerializer(serializers.ModelSerializer):
         # Update ManyToMany employees
         instance.employees.set(employees_data)
 
-        # Clear and recreate Itineraries
+        # Refresh itineraries
         instance.itinerary.all().delete()
         for item in itinerary_data:
-            item.pop('travel_order', None)  # 🔥 Prevent duplicate keyword
+            item.pop('travel_order', None)
             Itinerary.objects.create(travel_order=instance, **item)
 
         return instance
+
 
 
 class EmployeePositionSerializer(serializers.ModelSerializer):
