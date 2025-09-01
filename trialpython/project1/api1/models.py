@@ -3,6 +3,7 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from django.core.validators import MinValueValidator
+from django.core.validators import FileExtensionValidator
 from django.contrib.auth.models import AbstractUser
 
 class EmployeePosition(models.Model):
@@ -93,7 +94,7 @@ class TravelOrder(models.Model):
     ]
 
     FUND_CLUSTER = [
-        ('01_RF',')01_RF'),
+        ('01_RF','01_RF'),
         ('07_TF','07_TF')
     ]
 
@@ -103,7 +104,7 @@ class TravelOrder(models.Model):
     travel_order_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
     #new
     mode_of_filing = models.CharField(max_length=20, choices=MODE_OF_FILING, blank=True)
-    evidence = models.ImageField(null=True, blank=True, upload_to='evidence/')
+    evidence = models.FileField(null=True, blank=True, upload_to='evidence/',  validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'pdf'])])
     date_of_filing = models.DateField(auto_now_add=True)
     
     fund_cluster = models.CharField(max_length=10, choices=FUND_CLUSTER, blank=True)
@@ -124,7 +125,6 @@ class TravelOrder(models.Model):
     approval_stage = models.IntegerField(default=0)
     current_approver = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL, related_name='approving_orders')
 
-    destination = models.CharField(max_length=255)
     rejection_comment = models.TextField(null=True, blank=True)
     rejected_at = models.DateTimeField(null=True, blank=True)
     rejected_by = models.ForeignKey(CustomUser,null=True, blank=True, on_delete=models.SET_NULL, related_name='rejected_orders')

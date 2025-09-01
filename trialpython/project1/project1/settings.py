@@ -66,6 +66,20 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 ]
 
+# Allow media files to be accessed from frontend
+CORS_ALLOW_ALL_ORIGINS = False  # Keep this False for security
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
 
 TEMPLATES = [
     {
@@ -170,6 +184,11 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 AUTH_USER_MODEL = 'api1.CustomUser'
+
+# File upload settings
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000
 
 
 

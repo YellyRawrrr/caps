@@ -13,6 +13,29 @@ export default function ViewApproval() {
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isDisapproveModalOpen, setIsDisapproveModalOpen] = useState(false);
 
+  // Function to download evidence file using authenticated endpoint
+  const downloadEvidence = async (travelOrderId, fileName) => {
+    try {
+      const response = await axios.get(`/travel-orders/${travelOrderId}/evidence/`, {
+        responseType: 'blob',
+        withCredentials: true
+      });
+      
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName || 'evidence';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      alert('Failed to download evidence file. Please try again.');
+    }
+  };
+
   useEffect(() => {
     const fetchOrder = async () => {
       try {
@@ -90,6 +113,50 @@ export default function ViewApproval() {
           {order.rejection_comment && (
             <div className="sm:col-span-2 text-red-600">
               <span className="font-medium">Rejection Reason:</span> {order.rejection_comment}
+            </div>
+          )}
+          
+          {/* Evidence Display */}
+          {order.evidence && (
+            <div className="sm:col-span-2">
+              <span className="font-medium">Evidence:</span>
+              <div className="mt-2">
+                {order.evidence.toLowerCase().endsWith('.pdf') ? (
+                  <div className="border rounded p-4 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors" 
+                       onClick={() => downloadEvidence(order.id, 'evidence.pdf')}>
+                    <div className="flex items-center gap-3">
+                      <svg className="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">PDF Document</p>
+                        <p className="text-blue-600 hover:text-blue-800 text-sm underline">
+                          Click to download PDF Evidence
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border rounded p-4 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors" 
+                       onClick={() => downloadEvidence(order.id, 'evidence.jpg')}>
+                    <img 
+                      src={order.evidence} 
+                      alt="Evidence" 
+                      className="max-w-full h-auto max-h-96 rounded shadow-sm"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                    />
+                    <div style={{ display: 'none' }} className="text-center text-gray-500">
+                      <p>Unable to load image</p>
+                      <p className="text-blue-600 hover:text-blue-800 underline">
+                        Click to download Evidence File
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

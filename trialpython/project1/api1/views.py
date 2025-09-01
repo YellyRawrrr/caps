@@ -22,6 +22,9 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
+from django.http import HttpResponse, Http404
+import os
+import mimetypes
 
 
 @api_view(['POST'])
@@ -99,15 +102,32 @@ def protected_view(request):
 
 class TravelOrderCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
         user = request.user
-
+        
+        # Debug: Raw request data
+        print("=== RAW REQUEST DATA ===")
+        print(f"request.data keys: {list(request.data.keys())}")
+        print(f"request.FILES keys: {list(request.FILES.keys())}")
+        for key, value in request.data.items():
+            if key in ['employees', 'itinerary']:
+                print(f"{key}: {value} (type: {type(value)})")
+        
         # Get approval chain
         approval_chain = get_approval_chain(user)
         next_head = get_next_head(approval_chain, 0, current_user=user) if approval_chain else None
 
-        data = request.data.copy()
+        # Convert QueryDict to regular dict and handle list values properly
+        data = {}
+        for key, value in request.data.items():
+            if isinstance(value, list) and len(value) == 1:
+                # Extract single value from list (Django form processing creates lists)
+                data[key] = value[0]
+            else:
+                data[key] = value
+        
         data['current_approver'] = next_head.id if next_head else None
         data['approval_stage'] = 0
 
@@ -115,24 +135,33 @@ class TravelOrderCreateView(APIView):
         if isinstance(data.get('itinerary'), str):
             try:
                 data['itinerary'] = json.loads(data['itinerary'])
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
                 return Response({'itinerary': ['Invalid itinerary format.']}, status=400)
 
         # Parse employees
         if isinstance(data.get('employees'), str):
             try:
                 data['employees'] = json.loads(data['employees'])
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
                 return Response({'employees': ['Invalid employees format.']}, status=400)
 
         # Ensure filer is in employees
         if user.id not in data['employees']:
             data['employees'].insert(0, user.id)
 
+        # Debug: Final data being validated
+        print(f"FINAL VALIDATION DATA: {dict(data)}")
+        
         # Validate and save
         serializer = TravelOrderSerializer(data=data)
         if serializer.is_valid():
-            travel_order = serializer.save(prepared_by=user)
+            # Handle evidence file
+            evidence_file = request.FILES.get('evidence')
+            save_kwargs = {'prepared_by': user}
+            if evidence_file:
+                save_kwargs['evidence'] = evidence_file
+                
+            travel_order = serializer.save(**save_kwargs)
             travel_order.number_of_employees = travel_order.employees.count()
 
             # 🔑 Director → auto-generate travel order number
@@ -157,14 +186,17 @@ class TravelOrderCreateView(APIView):
                     }
                 )
 
+            print("SUCCESS: Travel order created")
             return Response(TravelOrderSerializer(travel_order).data, status=status.HTTP_201_CREATED)
 
+        print(f"VALIDATION ERRORS: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 
 class TravelOrderDetailUpdateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request, pk):
         order = get_object_or_404(TravelOrder, pk=pk)
@@ -177,25 +209,47 @@ class TravelOrderDetailUpdateView(APIView):
         if order.prepared_by != request.user:
             return Response({'error': 'Forbidden'}, status=403)
 
-        data = request.data.copy()
+        # Convert QueryDict to regular dict and handle list values properly
+        data = {}
+        for key, value in request.data.items():
+            if isinstance(value, list) and len(value) == 1:
+                # Extract single value from list (Django form processing creates lists)
+                data[key] = value[0]
+            else:
+                data[key] = value
 
-        import json
+        # Parse employees
         if isinstance(data.get('employees'), str):
-            data['employees'] = json.loads(data['employees'])
+            try:
+                data['employees'] = json.loads(data['employees'])
+            except json.JSONDecodeError:
+                return Response({'employees': ['Invalid employees format.']}, status=400)
+            
+        # Parse itinerary
         if isinstance(data.get('itinerary'), str):
-            data['itinerary'] = json.loads(data['itinerary'])
+            try:
+                data['itinerary'] = json.loads(data['itinerary'])
+            except json.JSONDecodeError:
+                return Response({'itinerary': ['Invalid itinerary format.']}, status=400)
 
         serializer = TravelOrderSerializer(order, data=data)
         if serializer.is_valid():
-            serializer.save(
-                approval_stage=0,
-                current_approver=get_next_head(get_approval_chain(request.user), 0, current_user=request.user),
-                is_resubmitted=True,
-                rejected_by=None,
-                rejection_comment='',
-                rejected_at=None,
-                status='Travel Order Resubmitted',  # ✅ Reset status from 'rejected'
-            )
+            # Handle evidence file if provided
+            evidence_file = request.FILES.get('evidence')
+            save_kwargs = {
+                'approval_stage': 0,
+                'current_approver': get_next_head(get_approval_chain(request.user), 0, current_user=request.user),
+                'is_resubmitted': True,
+                'rejected_by': None,
+                'rejection_comment': '',
+                'rejected_at': None,
+                'status': 'Travel Order Resubmitted',  # ✅ Reset status from 'rejected'
+            }
+            
+            if evidence_file:
+                save_kwargs['evidence'] = evidence_file
+                
+            serializer.save(**save_kwargs)
             return Response(serializer.data)
         return Response(serializer.errors, status=400)
 
@@ -903,3 +957,50 @@ class TravelOrderReportView(APIView):
 
         serializer = TravelOrderReportSerializer(queryset, many=True)
         return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_evidence(request, travel_order_id):
+    """
+    Download evidence file for a travel order with proper authentication and headers
+    """
+    try:
+        travel_order = get_object_or_404(TravelOrder, id=travel_order_id)
+        
+        # Check if user has permission to view this travel order
+        user = request.user
+        if user.user_level not in ['admin', 'director']:
+            # Check if user is involved in this travel order
+            if not (travel_order.prepared_by == user or travel_order.employees.filter(id=user.id).exists()):
+                return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if not travel_order.evidence:
+            return Response({'error': 'No evidence file found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get the file path
+        file_path = travel_order.evidence.path
+        
+        if not os.path.exists(file_path):
+            return Response({'error': 'File not found on server'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get file info
+        file_name = os.path.basename(file_path)
+        file_size = os.path.getsize(file_path)
+        
+        # Determine content type
+        content_type, _ = mimetypes.guess_type(file_path)
+        if not content_type:
+            content_type = 'application/octet-stream'
+        
+        # Read file and create response
+        with open(file_path, 'rb') as file:
+            response = HttpResponse(file.read(), content_type=content_type)
+            response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+            response['Content-Length'] = file_size
+            response['Access-Control-Allow-Origin'] = 'http://localhost:5173'
+            response['Access-Control-Allow-Credentials'] = 'true'
+            return response
+            
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

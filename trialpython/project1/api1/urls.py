@@ -10,7 +10,7 @@ from .views import (
     TravelOrdersNeedingLiquidationView, LiquidationDetailView, TravelOrderItineraryView,
     EmployeeDashboardAPIView, AdminDashboard, HeadDashboardAPIView, DirectorDashboardView,TravelOrderReportView,
     login_view, logout_view,
-    refresh_token_view, protected_view
+    refresh_token_view, protected_view, download_evidence
 )
 
 urlpatterns = [
@@ -77,4 +77,7 @@ urlpatterns = [
 
     # Authenticated User Info
     path('user-info/', CurrentUserView.as_view(), name='user-info'),
+    
+    # Evidence Download
+    path('travel-orders/<int:travel_order_id>/evidence/', download_evidence, name='download-evidence'),
 ]

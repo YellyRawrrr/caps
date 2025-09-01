@@ -71,9 +71,8 @@ class TravelOrderSerializer(serializers.ModelSerializer):
     itinerary = ItinerarySerializer(many=True)
     employee_position = serializers.PrimaryKeyRelatedField(queryset=EmployeePosition.objects.all(), allow_null=True, required=False)
     prepared_by_name = serializers.SerializerMethodField()
-    evidence = serializers.FileField(required=False, allow_null=True)  # Add evidence field
 
-    # NEW
+    # 👇 NEW
     approvals = SignatureSerializer(source="signature_set", many=True, read_only=True)  
     employee_signature = EmployeeSignatureSerializer(read_only=True)
 
@@ -86,20 +85,6 @@ class TravelOrderSerializer(serializers.ModelSerializer):
 
     def get_employee_names(self, obj):
         return [f"{u.first_name} {u.last_name}" for u in obj.employees.all()]
-
-    def validate_evidence(self, value):
-        if value:
-            # Check file extension
-            allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf']
-            file_extension = os.path.splitext(value.name)[1].lower()
-            if file_extension not in allowed_extensions:
-                raise serializers.ValidationError('Only image files (JPG, JPEG, PNG, GIF) and PDF files are allowed.')
-            
-            # Check file size (10MB limit)
-            if value.size > 10 * 1024 * 1024:
-                raise serializers.ValidationError('File size must be less than 10MB.')
-        
-        return value
 
     def create(self, validated_data):
         itinerary_data = validated_data.pop('itinerary')

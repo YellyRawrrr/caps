@@ -163,6 +163,8 @@ useEffect(() => {
           ? ''
           : prev.date_travel_from,
       date_travel_to: '',
+      // Clear evidence if switching from IMMEDIATE to NOT_IMMEDIATE
+      evidence: formData.mode_of_filing === 'NOT_IMMEDIATE' ? null : prev.evidence,
     }));
     setMinDateTo('');
   }, [formData.mode_of_filing]);
@@ -263,41 +265,46 @@ const handleSubmit = async (e) => {
   }
 
   const validEmployees = selectedEmployees.filter((id) => !!id);
-  const payload = {
-    ...formData,
-    fund: formData.fund ? Number(formData.fund) : null,
-    prepared_by: formData.prepared_by ? Number(formData.prepared_by) : null,
-    prepared_by_position_name: preparedByPositionName,
-    employees: [currentUserId, ...validEmployees].map(Number),
-    number_of_employees: validEmployees.length + 1,
-    itinerary: itineraryList.map((item) => ({
-      ...item,
-      transportation_allowance: parseFloat(item.transportation_allowance) || 0,
-      per_diem: parseFloat(item.per_diem) || 0,
-      other_expense: parseFloat(item.other_expense) || 0,
-      total_amount: parseFloat(item.total_amount) || 0,
-    })),
-    signature: signatureBase64,
-  };
+
+  const formDataToSend = new FormData();
+  formDataToSend.append("destination", formData.destination);
+  formDataToSend.append("purpose", formData.purpose);
+  formDataToSend.append("specific_role", formData.specific_role);
+  formDataToSend.append("date_travel_from", formData.date_travel_from);
+  formDataToSend.append("date_travel_to", formData.date_travel_to);
+  formDataToSend.append("mode_of_filing", formData.mode_of_filing);
+  formDataToSend.append("fund_cluster", formData.fund_cluster);
+  formDataToSend.append("prepared_by", formData.prepared_by);
+  formDataToSend.append("employees", JSON.stringify([currentUserId, ...validEmployees].map(Number)));
+  formDataToSend.append("itinerary", JSON.stringify(itineraryList));
+  if (signatureBase64) formDataToSend.append("signature", signatureBase64);
+
+  // 👇 append evidence if exists
+  if (formData.evidence) {
+    formDataToSend.append("evidence", formData.evidence);
+  }
+
+
 
   try {
-    const response = mode === 'edit'
-      ? await axios.put(`/travel-orders/${existingOrder.id}/`, payload)
-      : await axios.post('travel-orders/', payload);
+    const response = mode === "edit"
+      ? await axios.put(`/travel-orders/${existingOrder.id}/`, formDataToSend, {
+          headers: { "Content-Type": "multipart/form-data" },
+        })
+      : await axios.post("travel-orders/", formDataToSend, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
 
     if ([200, 201].includes(response.status)) {
       toast.success(mode === 'edit' ? 'Travel order resubmitted!' : 'Travel order submitted!');
       onClose();
-       if (mode === 'edit' && onRemoveRejected && existingOrder?.id) {
-    onRemoveRejected(existingOrder.id);
-  }
       await fetchOrders?.();
     } else {
-      toast.error('Submission failed. Please try again.');
+      toast.error("Submission failed. Please try again.");
     }
   } catch (err) {
-    console.error('Submission error:', err.response?.data || err.message);
-    toast.error('Submission failed. Please check your form.');
+    console.error("Submission error:", err.response?.data || err.message);
+    toast.error("Submission failed. Please check your form.");
   }
 };
 
@@ -320,7 +327,12 @@ const handleSubmit = async (e) => {
 
 const isCurrentTabValid = () => {
   if (activeTab === 'identification') {
-    return !!formData.mode_of_filing;
+    const hasFilingMode = !!formData.mode_of_filing;
+    // If immediate filing is selected, evidence is required
+    if (formData.mode_of_filing === 'IMMEDIATE') {
+      return hasFilingMode && !!formData.evidence;
+    }
+    return hasFilingMode;
   }
 
   if (activeTab === 'employee') {
@@ -398,6 +410,7 @@ const isCurrentTabValid = () => {
             <IdentificationStep
               formData={formData}
               handleChange={handleChange}
+              setFormData={setFormData}
             />
           )}
 
