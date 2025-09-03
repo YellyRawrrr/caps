@@ -30,16 +30,34 @@ import mimetypes
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
-    username = request.data.get('username')
+    email = request.data.get('email')
     password = request.data.get('password')
 
-    user = authenticate(request, username=username, password=password)
+    # Try to find user by email first, then fallback to username
+    try:
+        user_obj = CustomUser.objects.get(email=email)
+        user = authenticate(request, username=user_obj.username, password=password)
+    except CustomUser.DoesNotExist:
+        # Fallback to username authentication for backward compatibility
+        username = request.data.get('username')
+        if username:
+            user = authenticate(request, username=username, password=password)
+        else:
+            user = None
 
     if user:
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
 
-        response = Response({"message": "Login Successful"}, status=status.HTTP_200_OK)
+        # Check if user must change password
+        if user.must_change_password:
+            response = Response({
+                "message": "Password change required", 
+                "must_change_password": True,
+                "user_id": user.id
+            }, status=status.HTTP_200_OK)
+        else:
+            response = Response({"message": "Login Successful"}, status=status.HTTP_200_OK)
 
         cookie_name = settings.SIMPLE_JWT.get("AUTH_COOKIE", "access_token")
         cookie_secure = settings.SIMPLE_JWT.get("AUTH_COOKIE_SECURE", False)
@@ -96,6 +114,30 @@ def protected_view(request):
         "authenticated": True,
         "user": request.user.username
     })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password_view(request):
+    """
+    Change user password and clear must_change_password flag
+    """
+    user = request.user
+    new_password = request.data.get('new_password')
+    
+    if not new_password:
+        return Response({"error": "New password is required"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if len(new_password) < 8:
+        return Response({"error": "Password must be at least 8 characters long"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Set new password
+    user.set_password(new_password)
+    # Clear the must_change_password flag
+    user.must_change_password = False
+    user.save()
+    
+    return Response({"message": "Password changed successfully"}, status=status.HTTP_200_OK)
 
 
 
@@ -555,9 +597,64 @@ class CurrentUserView(APIView):
         return Response({
             "id": user.id,
             "username": user.username,
+            "email": user.email,
             "user_level": user.user_level,
             "employee_type": user.employee_type
         })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def change_password_view(request):
+    """Change password for first-time login users"""
+    user_id = request.data.get('user_id')
+    new_password = request.data.get('new_password')
+    
+    if not user_id or not new_password:
+        return Response({
+            "error": "User ID and new password are required"
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        user = CustomUser.objects.get(id=user_id)
+        if not user.must_change_password:
+            return Response({
+                "error": "User does not need to change password"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Set new password
+        user.set_password(new_password)
+        user.must_change_password = False
+        user.save()
+        
+        # Generate tokens for successful login
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        
+        response = Response({
+            "message": "Password changed successfully. Login completed.",
+            "access_token": access_token
+        }, status=status.HTTP_200_OK)
+        
+        # Set authentication cookie
+        cookie_name = settings.SIMPLE_JWT.get("AUTH_COOKIE", "access_token")
+        cookie_secure = settings.SIMPLE_JWT.get("AUTH_COOKIE_SECURE", False)
+        cookie_httponly = settings.SIMPLE_JWT.get("AUTH_COOKIE_HTTP_ONLY", True)
+        cookie_samesite = settings.SIMPLE_JWT.get("AUTH_COOKIE_SAMESITE", "Lax")
+        access_token_lifetime = int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds())
+        
+        response.set_cookie(cookie_name, access_token, httponly=cookie_httponly, secure=cookie_secure,
+                           samesite=cookie_samesite, max_age=access_token_lifetime)
+        
+        return response
+        
+    except CustomUser.DoesNotExist:
+        return Response({
+            "error": "User not found"
+        }, status=status.HTTP_404_NOT_FOUND)
+
+
+
 
 
 class EmployeeListView(APIView):

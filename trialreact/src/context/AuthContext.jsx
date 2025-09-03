@@ -8,6 +8,8 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [firstTimeLoginData, setFirstTimeLoginData] = useState(null);
   const navigate = useNavigate();
 
   
@@ -23,6 +25,12 @@ export const AuthProvider = ({ children }) => {
 
   
   const checkAuth = async () => {
+    // Don't check auth if we're in first-time login flow
+    if (showPasswordChange) {
+      setLoading(false);
+      return;
+    }
+    
     try {
       const res = await axios.get('/protected/');
       console.log('Provider: ' + res.data.authenticated);
@@ -47,9 +55,44 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-const login = async (username, password) => {
+const login = async (email, password) => {
   try {
-    await axios.post('/login/', { username, password });
+    const response = await axios.post('/login/', { email, password });
+    
+    // Check if password change is required
+    if (response.data.must_change_password) {
+      // First, set the user data and redirect to dashboard
+      const userInfo = await fetchUser();
+      setUser(userInfo);
+      
+      // Then set up the first-time login modal
+      setFirstTimeLoginData({
+        userId: response.data.user_id,
+        userEmail: email
+      });
+      setShowPasswordChange(true);
+      
+      // Redirect to appropriate dashboard based on user level
+      if (userInfo.user_level === 'admin') {
+        navigate('/admin-dashboard');
+      } else if (userInfo.user_level === 'director') {
+        navigate('/director-dashboard');
+      } else if (userInfo.user_level === 'head') {
+        navigate('/head-dashboard');
+      } else if (userInfo.user_level === 'employee') {
+        navigate('/employee-dashboard');
+      } else if (userInfo.user_level === 'bookkeeper') {
+        navigate('/bookkeeper-liquidation');
+      } else if (userInfo.user_level === 'accountant') {
+        navigate('/bookkeeper-liquidation');
+      } else {
+        navigate('/dashboard');
+      }
+      
+      setLoading(false);
+      return; // Don't proceed with normal login flow
+    }
+    
     await checkAuth();
     // After checkAuth, user state is updated
     const userInfo = await fetchUser();
@@ -84,7 +127,35 @@ const login = async (username, password) => {
       console.error('Logout error:', err);
     }
     setUser(null);
+    setShowPasswordChange(false);
+    setFirstTimeLoginData(null);
     navigate('/login');
+  };
+
+  const handleFirstTimeLoginComplete = async () => {
+    setShowPasswordChange(false);
+    setFirstTimeLoginData(null);
+    // Re-authenticate user after email verification
+    await checkAuth();
+    const userInfo = await fetchUser();
+    setUser(userInfo);
+    
+    // Redirect based on user_level
+    if (userInfo.user_level === 'admin') {
+      navigate('/admin-dashboard');
+    } else if (userInfo.user_level === 'director') {
+      navigate('/director-dashboard');
+    } else if (userInfo.user_level === 'head') {
+      navigate('/head-dashboard');
+    } else if (userInfo.user_level === 'employee') {
+      navigate('/employee-dashboard');
+    } else if (userInfo.user_level === 'bookkeeper') {
+      navigate('/bookkeeper-liquidation');
+    } else if (userInfo.user_level === 'accountant') {
+      navigate('/bookkeeper-liquidation');
+    } else {
+      navigate('/dashboard');
+    }
   };
 
   useEffect(() => {
@@ -92,7 +163,16 @@ const login = async (username, password) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      logout, 
+      loading, 
+      showPasswordChange, 
+      setShowPasswordChange,
+      firstTimeLoginData,
+      handleFirstTimeLoginComplete 
+    }}>
       {children}
     </AuthContext.Provider>
   );

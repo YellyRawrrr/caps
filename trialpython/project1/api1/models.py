@@ -57,6 +57,7 @@ class CustomUser(AbstractUser):
     employee_type = models.CharField(max_length=30, choices=EMPLOYEE_TYPE_CHOICES, blank=True, null=True)
     employee_position = models.ForeignKey(EmployeePosition, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
     type_of_user = models.CharField(max_length=100, choices=TYPE_OF_USER, blank=True, null=True)
+    must_change_password = models.BooleanField(default=False, help_text="User must change password on next login")
     
 
     @property

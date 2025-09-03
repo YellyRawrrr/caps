@@ -1,6 +1,7 @@
 import { Toaster } from 'react-hot-toast';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import FirstTimeLogin from './components/FirstTimeLogin';
 import MyTravels from './pages/MyTravels';
 import RejectedOrders from './components/RejectedOrders';
 import HeadApprovalPanel from './components/HeadApprovalPanel';
@@ -29,10 +30,11 @@ import TransportationPage from './pages/AdminPage/TransportationPage';
 import EmployeePositionsPage from './pages/AdminPage/EmployeePositionsPage';
 
 
-function App() {
+function AppRoutes() {
+  const { showPasswordChange, firstTimeLoginData, handleFirstTimeLoginComplete } = useAuth();
+
   return (
-    <AuthProvider>
-   <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+    <>
       <Routes>
         
         {/* Public routes */}
@@ -182,6 +184,23 @@ function App() {
   </ProtectedRoute>
 } />
       </Routes>
+      
+      {showPasswordChange && firstTimeLoginData && (
+        <FirstTimeLogin
+          userId={firstTimeLoginData.userId}
+          userEmail={firstTimeLoginData.userEmail}
+          onComplete={handleFirstTimeLoginComplete}
+        />
+      )}
+    </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+      <AppRoutes />
     </AuthProvider>
   );
 }

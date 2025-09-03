@@ -10,7 +10,7 @@ from .views import (
     TravelOrdersNeedingLiquidationView, LiquidationDetailView, TravelOrderItineraryView,
     EmployeeDashboardAPIView, AdminDashboard, HeadDashboardAPIView, DirectorDashboardView,TravelOrderReportView,
     login_view, logout_view,
-    refresh_token_view, protected_view, download_evidence
+    refresh_token_view, protected_view, download_evidence, change_password_view
 )
 
 urlpatterns = [
@@ -19,6 +19,7 @@ urlpatterns = [
     path('logout/', logout_view),
     path('refresh/', refresh_token_view),
     path('protected/', protected_view),
+    path('change-password/', change_password_view),
 
     #Users/Admin
     path('employees/', EmployeeListView.as_view(), name='employee-list'),

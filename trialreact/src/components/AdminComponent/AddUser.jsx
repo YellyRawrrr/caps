@@ -6,6 +6,7 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
   if (!isOpen) return null;
 
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("ncipregion1"); // default
   const [firstname, setFirstname] = useState("");
   const [lastname, setLastname] = useState("");
@@ -121,6 +122,7 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
     try {
       await axios.post("/employees/", {
         username,
+        email,
         password,
         first_name: firstname,
         last_name: lastname,
@@ -128,6 +130,7 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
         employee_type: employeetype || null,
         type_of_user: typeOfUser || null,
         employee_position: positionId || null,
+        must_change_password: true, // New users must change password on first login
       });
 
       toast.success("User added successfully!");
@@ -159,71 +162,101 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
   return (
     <>
       {/* Main Add User Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-lg w-full max-w-md mx-4 p-6 border border-gray-300">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">Add New User</h2>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl">
-              &times;
-            </button>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-200">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800">Add New User</h2>
+              <button 
+                onClick={onClose} 
+                className="text-gray-400 hover:text-gray-600 text-2xl font-light transition-colors"
+              >
+                &times;
+              </button>
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="p-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
             {/* Username */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Username</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Username <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-2 border rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                required
+              />
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Email Address <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 required
               />
             </div>
 
             {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Password <span className="text-red-500">*</span>
+              </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 border rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 required
               />
             </div>
 
             {/* First Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">First Name</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                First Name <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 value={firstname}
                 onChange={(e) => setFirstname(e.target.value)}
-                className="w-full px-4 py-2 border rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 required
               />
             </div>
 
             {/* Last Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Last Name</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Last Name <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 value={lastname}
                 onChange={(e) => setLastname(e.target.value)}
-                className="w-full px-4 py-2 border rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 required
               />
             </div>
 
             {/* Type of User */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Type of User</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Type of User <span className="text-red-500">*</span>
+              </label>
               <select
                 value={typeOfUser}
                 onChange={(e) => setTypeOfUser(e.target.value)}
-                className="w-full px-4 py-2 border rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 required
               >
                 <option value="">Select type of user</option>
@@ -236,12 +269,14 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
             </div>
 
             {/* User Level */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">User Level</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                User Level <span className="text-red-500">*</span>
+              </label>
               <select
                 value={userlevel}
                 onChange={(e) => setUserlevel(e.target.value)}
-                className="w-full px-4 py-2 border rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                 disabled={[
                   "Community Service Center Employee",
                   "Provincial Office Employee",
@@ -264,12 +299,14 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
             </div>
 
             {/* Employee Type */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Employee Type</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Employee Type <span className="text-red-500">*</span>
+              </label>
               <select
                 value={employeetype}
                 onChange={(e) => setEmployeetype(e.target.value)}
-                className="w-full px-4 py-2 border rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                 disabled={["tmsd", "afsd", "regional"].includes(employeetype)}
                 required
               >
@@ -283,14 +320,14 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
             </div>
 
             {/* Employee Position */}
-            <div>
+            <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700">Employee Position</label>
               <select
                 value={positionId}
                 onChange={(e) => setPositionId(e.target.value)}
-                className="w-full px-4 py-2 border rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               >
-                <option value="">Select position</option>
+                <option value="">Select position (optional)</option>
                 {positions.map((pos) => (
                   <option key={pos.id} value={pos.id}>
                     {pos.position_name}
@@ -299,35 +336,36 @@ export default function AddUser({ isOpen, onClose, fetchUsers }) {
               </select>
             </div>
 
-            {/* Submit */}
-            <div className="mt-6 flex justify-end">
-              <button
-                type="submit"
-                className="bg-blue-800 text-white px-6 py-2 rounded-md hover:bg-blue-900 transition"
-              >
-                Save User
-              </button>
-            </div>
-          </form>
+              {/* Submit */}
+              <div className="flex justify-end pt-4 border-t border-gray-200">
+                <button
+                  type="submit"
+                  className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-medium"
+                >
+                  Save User
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
 
       {/* Confirmation Modal */}
       {showConfirm && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white p-6 rounded-xl shadow-xl w-[350px] text-center">
-            <h2 className="text-lg font-semibold mb-4">Confirm Action</h2>
-            <p className="mb-6">Are you sure you want to add this user?</p>
-            <div className="flex justify-between">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 text-center border border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Confirm Action</h2>
+            <p className="text-gray-600 mb-6">Are you sure you want to add this user?</p>
+            <div className="flex justify-center space-x-4">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400"
+                className="px-4 py-2 rounded-md border border-gray-400 text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmSave}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
               >
                 Save
               </button>

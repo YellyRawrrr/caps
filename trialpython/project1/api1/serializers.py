@@ -144,12 +144,13 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = [
-            'id', 'username', 'password',
+            'id', 'username', 'email', 'password',
             'user_level', 'user_level_display',
             'employee_type', 'employee_type_display',
             'type_of_user', 'type_of_user_display',
             'first_name', 'last_name',
-            'full_name', 'employee_position', 'employee_position_name'
+            'full_name', 'employee_position', 'employee_position_name',
+            'must_change_password'
         ]
 
     def get_full_name(self, obj):
