@@ -26,6 +26,7 @@ export default function TravelOrderForm({ isOpen, onClose, fetchOrders, mode = '
   const [activeTab, setActiveTab] = useState('identification');
   const [formData, setFormData] = useState({
   destination: '',
+  distance: 1,
   purpose: '',
   specific_role: '',
   date_travel_from: '',
@@ -124,6 +125,7 @@ useEffect(() => {
     setFormData((prev) => ({
       ...prev,
       destination: existingOrder.destination || '',
+      distance: existingOrder.distance || 1,
       purpose: existingOrder.purpose || '',
       specific_role: existingOrder.specific_role || '',
       date_travel_from: existingOrder.date_travel_from || '',
@@ -268,6 +270,7 @@ const handleSubmit = async (e) => {
 
   const formDataToSend = new FormData();
   formDataToSend.append("destination", formData.destination);
+  formDataToSend.append("distance", formData.distance);
   formDataToSend.append("purpose", formData.purpose);
   formDataToSend.append("specific_role", formData.specific_role);
   formDataToSend.append("date_travel_from", formData.date_travel_from);
@@ -341,6 +344,7 @@ const isCurrentTabValid = () => {
       selectedEmployees.every((emp) => !!emp);
     const hasRequiredFields = [
       formData.destination,
+      formData.distance,
       formData.purpose,
       formData.specific_role,
       formData.date_travel_from,
@@ -365,7 +369,7 @@ const isCurrentTabValid = () => {
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-xl relative overflow-y-auto max-h-[90vh]">
+      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-7xl relative overflow-y-auto max-h-[95vh]">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"

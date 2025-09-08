@@ -1,6 +1,7 @@
 import { Toaster } from 'react-hot-toast';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import FirstTimeLogin from './components/FirstTimeLogin';
 import MyTravels from './pages/MyTravels';
 import RejectedOrders from './components/RejectedOrders';
@@ -199,8 +200,10 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
-      <AppRoutes />
+      <NotificationProvider>
+        <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+        <AppRoutes />
+      </NotificationProvider>
     </AuthProvider>
   );
 }

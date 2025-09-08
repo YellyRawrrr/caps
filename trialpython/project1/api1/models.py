@@ -112,6 +112,8 @@ class TravelOrder(models.Model):
     number_of_employees = models.IntegerField(default=0)
     
     destination = models.CharField(max_length=255)
+    distance = models.IntegerField(default=1, help_text="Distance in kilometers")
+    
     purpose = models.TextField()
     specific_role = models.TextField(blank=True, null=True)
     fund = models.ForeignKey(Fund, on_delete=models.SET_NULL, null=True, blank=True)
@@ -223,3 +225,27 @@ class Liquidation(models.Model):
         else:
             self.status = 'Pending'
         self.save()
+
+
+# --- NOTIFICATIONS ---
+class Notification(models.Model):
+    NOTIFICATION_TYPES = [
+        ('travel_approved', 'Travel Request Approved'),
+        ('travel_rejected', 'Travel Request Rejected'),
+        ('travel_rejected_by_next_approver', 'Travel Request Rejected by Next Approver'),
+        ('travel_final_approved', 'Travel Request Finally Approved'),
+    ]
+    
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='notifications')
+    travel_order = models.ForeignKey(TravelOrder, on_delete=models.CASCADE, related_name='notifications')
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.title} - {self.user.username}"

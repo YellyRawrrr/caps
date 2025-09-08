@@ -9,6 +9,7 @@ from .views import (
     SubmitLiquidationView, BookkeeperReviewView, AccountantReviewView, LiquidationListView,
     TravelOrdersNeedingLiquidationView, LiquidationDetailView, TravelOrderItineraryView,
     EmployeeDashboardAPIView, AdminDashboard, HeadDashboardAPIView, DirectorDashboardView,TravelOrderReportView,
+    NotificationListView, NotificationMarkReadView, NotificationMarkAllReadView, NotificationCountView,
     login_view, logout_view,
     refresh_token_view, protected_view, download_evidence, change_password_view
 )
@@ -81,4 +82,10 @@ urlpatterns = [
     
     # Evidence Download
     path('travel-orders/<int:travel_order_id>/evidence/', download_evidence, name='download-evidence'),
+    
+    # Notifications
+    path('notifications/', NotificationListView.as_view(), name='notification-list'),
+    path('notifications/<int:pk>/mark-read/', NotificationMarkReadView.as_view(), name='notification-mark-read'),
+    path('notifications/mark-all-read/', NotificationMarkAllReadView.as_view(), name='notification-mark-all-read'),
+    path('notifications/count/', NotificationCountView.as_view(), name='notification-count'),
 ]

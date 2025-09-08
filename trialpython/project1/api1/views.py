@@ -11,8 +11,8 @@ from django.utils.dateparse import parse_date
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
 from django.utils.timezone import now
-from .models import TravelOrder, Signature, CustomUser, Fund, Transportation, EmployeePosition, Liquidation, EmployeeSignature, Itinerary
-from .serializers import TravelOrderSerializer, UserSerializer, FundSerializer, TransportationSerializer, EmployeePositionSerializer, LiquidationSerializer, ItinerarySerializer, TravelOrderSimpleSerializer, TravelOrderReportSerializer
+from .models import TravelOrder, Signature, CustomUser, Fund, Transportation, EmployeePosition, Liquidation, EmployeeSignature, Itinerary, Notification
+from .serializers import TravelOrderSerializer, UserSerializer, FundSerializer, TransportationSerializer, EmployeePositionSerializer, LiquidationSerializer, ItinerarySerializer, TravelOrderSimpleSerializer, TravelOrderReportSerializer, NotificationSerializer
 from .utils import get_approval_chain, get_next_head, build_status_map
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
@@ -25,6 +25,17 @@ from django.contrib.auth.hashers import make_password
 from django.http import HttpResponse, Http404
 import os
 import mimetypes
+
+
+def create_notification(user, travel_order, notification_type, title, message):
+    """Helper function to create notifications"""
+    Notification.objects.create(
+        user=user,
+        travel_order=travel_order,
+        notification_type=notification_type,
+        title=title,
+        message=message
+    )
 
 
 @api_view(['POST'])
@@ -516,6 +527,37 @@ class ApproveTravelOrderView(APIView):
                 )
 
             order.save()
+            
+            # Create notification for the employee who filed the request
+            if order.prepared_by:
+                create_notification(
+                    user=order.prepared_by,
+                    travel_order=order,
+                    notification_type='travel_approved',
+                    title=f'Travel Request Approved by {user.get_full_name()}',
+                    message=f'Your travel request to {order.destination} has been approved by {user.get_full_name()}.'
+                )
+            
+            # If there's a next approver, notify them
+            if next_head:
+                create_notification(
+                    user=next_head,
+                    travel_order=order,
+                    notification_type='travel_approved',
+                    title=f'New Travel Request for Approval',
+                    message=f'A travel request to {order.destination} by {order.prepared_by.get_full_name()} is ready for your approval.'
+                )
+            else:
+                # Final approval - notify the employee
+                if order.prepared_by:
+                    create_notification(
+                        user=order.prepared_by,
+                        travel_order=order,
+                        notification_type='travel_final_approved',
+                        title=f'Travel Request Finally Approved',
+                        message=f'Your travel request to {order.destination} has been finally approved and travel order number {order.travel_order_number} has been generated.'
+                    )
+            
             return Response({"message": "Travel order approved."}, status=200)
 
 
@@ -537,6 +579,28 @@ class ApproveTravelOrderView(APIView):
             order.rejected_at = timezone.now()
             order.current_approver = None
             order.save()
+            
+            # Create notification for the employee who filed the request
+            if order.prepared_by:
+                create_notification(
+                    user=order.prepared_by,
+                    travel_order=order,
+                    notification_type='travel_rejected',
+                    title=f'Travel Request Rejected by {user.get_full_name()}',
+                    message=f'Your travel request to {order.destination} has been rejected by {user.get_full_name()}. Reason: {comment}'
+                )
+            
+            # Notify previous approvers that their approved request was rejected
+            previous_signatures = Signature.objects.filter(order=order).order_by('-signed_at')
+            for signature in previous_signatures:
+                if signature.signed_by != user:  # Don't notify the current rejector
+                    create_notification(
+                        user=signature.signed_by,
+                        travel_order=order,
+                        notification_type='travel_rejected_by_next_approver',
+                        title=f'Your Approved Travel Request was Rejected',
+                        message=f'The travel request to {order.destination} that you approved has been rejected by {user.get_full_name()}. Reason: {comment}'
+                    )
 
             return Response({"message": "Travel order rejected."}, status=200)
 
@@ -1101,3 +1165,46 @@ def download_evidence(request, travel_order_id):
             
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# --- NOTIFICATION VIEWS ---
+class NotificationListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """Get all notifications for the current user"""
+        notifications = Notification.objects.filter(user=request.user)
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data)
+
+
+class NotificationMarkReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk):
+        """Mark a specific notification as read"""
+        try:
+            notification = Notification.objects.get(pk=pk, user=request.user)
+            notification.is_read = True
+            notification.save()
+            return Response({"message": "Notification marked as read"}, status=200)
+        except Notification.DoesNotExist:
+            return Response({"error": "Notification not found"}, status=404)
+
+
+class NotificationMarkAllReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request):
+        """Mark all notifications as read for the current user"""
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response({"message": "All notifications marked as read"}, status=200)
+
+
+class NotificationCountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """Get count of unread notifications"""
+        count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({"unread_count": count}, status=200)

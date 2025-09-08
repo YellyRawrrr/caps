@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import TravelOrder, Signature, CustomUser, Itinerary, Fund, Transportation, EmployeePosition, Liquidation,EmployeeSignature
+from .models import TravelOrder, Signature, CustomUser, Itinerary, Fund, Transportation, EmployeePosition, Liquidation,EmployeeSignature, Notification
 from django.contrib.auth.hashers import make_password
 
 class TransportationSerializer(serializers.ModelSerializer):
@@ -30,6 +30,7 @@ class TravelOrderReportSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'destination',
+            'distance',
             'purpose',
             'date_travel_from',
             'date_travel_to',
@@ -181,7 +182,7 @@ class UserSerializer(serializers.ModelSerializer):
 class TravelOrderSimpleSerializer(serializers.ModelSerializer):
     class Meta:
         model = TravelOrder
-        fields = ['id', 'travel_order_number', 'destination', 'date_travel_from', 'date_travel_to']
+        fields = ['id', 'travel_order_number', 'destination', 'distance', 'date_travel_from', 'date_travel_to']
 
 
 
@@ -205,3 +206,15 @@ class LiquidationSerializer(serializers.ModelSerializer):
             'reviewed_by_bookkeeper', 'reviewed_at_bookkeeper',
             'reviewed_by_accountant', 'reviewed_at_accountant'
         )
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    travel_order_destination = serializers.CharField(source='travel_order.destination', read_only=True)
+    travel_order_id = serializers.IntegerField(source='travel_order.id', read_only=True)
+    
+    class Meta:
+        model = Notification
+        fields = [
+            'id', 'notification_type', 'title', 'message', 
+            'is_read', 'created_at', 'travel_order_destination', 'travel_order_id'
+        ]

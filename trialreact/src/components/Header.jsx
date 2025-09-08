@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import logo from '../img/ncip-logo.png';
 import { useAuth } from '../context/AuthContext';
 import { FaSignOutAlt } from 'react-icons/fa';
+import NotificationDropdown from './NotificationDropdown';
 
 
 const Header = () => {
@@ -31,8 +32,13 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Right side: username + dropdown */}
-      <div className="relative" ref={dropdownRef}>
+      {/* Right side: notifications + username + dropdown */}
+      <div className="flex items-center gap-4">
+        {/* Notification Bell */}
+        <NotificationDropdown />
+
+        {/* User dropdown */}
+        <div className="relative" ref={dropdownRef}>
   <button
     onClick={() => setDropdownOpen(!dropdownOpen)}
     className="flex flex-col items-start gap-0 bg-white text-blue-800 font-medium rounded-full px-3 py-1.5 shadow border border-blue-100 hover:bg-blue-50 transition min-w-[170px]"
@@ -78,6 +84,7 @@ const Header = () => {
     </div>
   )}
 </div>
+      </div>
 
     </header>
   );

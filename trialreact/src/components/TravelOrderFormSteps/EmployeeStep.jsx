@@ -179,6 +179,7 @@ export default function EmployeeStep({
           min: minDateTo,
         },
         { label: 'Destination', name: 'destination', type: 'text' },
+        { label: 'Distance (in KM)', name: 'distance', type: 'number', min: 1 },
       ].map(({ label, name, type, min }) => (
         <div key={name}>
           <label className="block mb-1 text-sm font-medium text-gray-700">
